@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
@@ -5,11 +7,13 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([400.0, 300.0])
             .with_min_inner_size([300.0, 220.0]),
+        persistence_path: Some(PathBuf::from("./plots.ron")),
         ..Default::default()
     };
+    eprint!("{:?}", native_options.persistence_path);
     eframe::run_native(
-        "eframe template",
+        "DIP plots",
         native_options,
-        Box::new(|cc| Ok(Box::new(plots::TemplateApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(plots::DipPlotsApp::new(cc)))),
     )
 }
