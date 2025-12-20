@@ -6,4 +6,4 @@ mod widgets;
 
 pub use app::DipPlotsApp;
 
-pub use widgets::zoom_image::ZoomWidget;
+pub use widgets::zoom_texture::ZoomTexture;

@@ -1,1 +1,1 @@
-pub mod zoom_image;
+pub mod zoom_texture;

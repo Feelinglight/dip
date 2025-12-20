@@ -1,14 +1,14 @@
 use egui::{ColorImage, SidePanel, TextureHandle, Vec2};
 use image::ImageReader;
 
-use crate::{ZoomWidget, config::AppConfig, widgets::zoom_image::ZoomWidgetConfig};
+use crate::{ZoomTexture, config::AppConfig, widgets::zoom_texture::ZoomTextureConfig};
 
 pub struct DipPlotsApp {
     config: AppConfig,
     label: String,
     value: f32,
 
-    zw_config: ZoomWidgetConfig,
+    zw_config: ZoomTextureConfig,
 }
 
 impl DipPlotsApp {
@@ -37,7 +37,7 @@ impl DipPlotsApp {
             config: config,
             label: "Hello world".to_owned(),
             value: 2.7,
-            zw_config: ZoomWidgetConfig::new(cc.egui_ctx.load_texture(
+            zw_config: ZoomTextureConfig::new(cc.egui_ctx.load_texture(
                 "dip",
                 ci,
                 egui::TextureOptions::LINEAR,
@@ -83,7 +83,7 @@ impl eframe::App for DipPlotsApp {
                     });
                 });
 
-            let zoom_widget = ZoomWidget::new(&mut self.zw_config, ui.available_size());
+            let zoom_widget = ZoomTexture::new(&mut self.zw_config, ui.available_size());
             ui.add(zoom_widget);
         });
     }
