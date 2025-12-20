@@ -18,9 +18,3 @@ impl Default for AppConfig {
         }
     }
 }
-
-impl AppConfig {
-    pub fn new() {
-        Default::default()
-    }
-}

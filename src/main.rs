@@ -10,7 +10,6 @@ fn main() -> eframe::Result {
         persistence_path: Some(PathBuf::from("./plots.ron")),
         ..Default::default()
     };
-    eprint!("{:?}", native_options.persistence_path);
     eframe::run_native(
         "DIP plots",
         native_options,
