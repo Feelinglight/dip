@@ -1,13 +1,11 @@
-use egui::{ColorImage, SidePanel, TextureHandle, Vec2};
+use egui::ColorImage;
+use egui_plot::{Bar, BarChart, Legend, Plot};
 use image::ImageReader;
 
 use crate::{ZoomTexture, config::AppConfig, widgets::zoom_texture::ZoomTextureConfig};
 
 pub struct DipPlotsApp {
     config: AppConfig,
-    label: String,
-    value: f32,
-
     zw_config: ZoomTextureConfig,
 }
 
@@ -35,9 +33,7 @@ impl DipPlotsApp {
 
         Self {
             config: config,
-            label: "Hello world".to_owned(),
-            value: 2.7,
-            zw_config: ZoomTextureConfig::new(cc.egui_ctx.load_texture(
+            zw_config: ZoomTextureConfig::from_texture(cc.egui_ctx.load_texture(
                 "dip",
                 ci,
                 egui::TextureOptions::LINEAR,
@@ -60,28 +56,23 @@ impl eframe::App for DipPlotsApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // The central panel the region left after adding TopPanel's and SidePanel's
             ui.heading("Diplib visualizer");
-
-            ui.horizontal(|ui| {
-                ui.label("Write something: ");
-                ui.text_edit_singleline(&mut self.label);
-            });
 
             ui.separator();
 
-            egui::SidePanel::right("plots")
-                // .default_width(self.panel_response)
-                .show_inside(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.add(egui::Slider::new(&mut self.value, 0.0..=10.0).text("value"));
-                        if ui.button("Increment").clicked() {
-                            self.value += 1.0;
-                        }
-                        // Чтобы ресайз не сбрасывался
-                        ui.allocate_space(ui.available_size());
+            ui.checkbox(&mut self.config.hist_enable, "Показать гистограмму");
+
+            ui.separator();
+
+            if self.config.hist_enable {
+                egui::SidePanel::right("plots")
+                    // .default_width(self.panel_response)
+                    .show_inside(ui, |ui| {
+                        ui.vertical(|ui| {
+                            histogram(ui);
+                        });
                     });
-                });
+            }
 
             let zoom_widget = ZoomTexture::new(&mut self.zw_config, ui.available_size());
             ui.add(zoom_widget);
@@ -93,34 +84,29 @@ impl eframe::App for DipPlotsApp {
     }
 }
 
-fn calc_scaled_image_size(ui: &mut egui::Ui, origin_size: Vec2) -> Vec2 {
-    // available area within the central panel
-    let avail = ui.available_size();
+fn histogram(ui: &mut egui::Ui) {
+    let chart = BarChart::new(
+        "Normal Distribution",
+        (-395..=395)
+            .step_by(1)
+            .map(|x| x as f64 * 0.01)
+            .map(|x| {
+                (
+                    x,
+                    (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt(),
+                )
+            })
+            .map(|(x, f)| Bar::new(x, f * 10.0).width(0.1))
+            .collect(),
+    )
+    .color(egui::Color32::LIGHT_BLUE);
 
-    // compute scale that fits the image into the available rect while preserving aspect ratio
-    // (if you want to avoid enlarging images beyond their native size, add `.min(1.0)`)
-    let scale = (avail.x / origin_size.x).min(avail.y / origin_size.y);
-
-    // handle degenerate cases (zero / infinite)
-    let scale = if !scale.is_finite() || scale <= 0.0 {
-        1.0
-    } else {
-        scale
-    };
-
-    egui::vec2(origin_size.x * scale, origin_size.y * scale)
-}
-
-fn powered_by_egui_and_eframe(ui: &mut egui::Ui) {
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
-        ui.label("Powered by ");
-        ui.hyperlink_to("egui", "https://github.com/emilk/egui");
-        ui.label(" and ");
-        ui.hyperlink_to(
-            "eframe",
-            "https://github.com/emilk/egui/tree/master/crates/eframe",
-        );
-        ui.label(".");
-    });
+    Plot::new("Normal Distribution Demo")
+        // .(Vec2 { x: 400., y: 0. })
+        .legend(Legend::default())
+        .clamp_grid(true)
+        .allow_zoom(egui::Vec2b::new(true, true))
+        .allow_drag(egui::Vec2b::new(true, true))
+        .allow_scroll(egui::Vec2b::new(false, false))
+        .show(ui, |plot_ui| plot_ui.bar_chart(chart));
 }
