@@ -1,10 +1,13 @@
-/// We derive Deserialize/Serialize so we can persist app state on shutdown.
+use crate::widgets::zoom_texture::ZoomTextureState;
+
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)] // if we add new fields, give them default values when deserializing old state
+#[serde(default)]
 pub struct AppConfig {
     pub hist_enable: bool,
 
-    #[serde(skip)] // This how you opt-out of serialization of a field
+    pub zt_state: ZoomTextureState,
+
+    #[serde(skip)]
     value: f32,
 }
 
@@ -13,6 +16,7 @@ impl Default for AppConfig {
         Self {
             // Example stuff:
             hist_enable: false,
+            zt_state: Default::default(),
             value: 2.7,
         }
     }

@@ -1,12 +1,9 @@
-use egui::ColorImage;
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use image::ImageReader;
 
-use crate::{ZoomTexture, config::AppConfig, widgets::zoom_texture::ZoomTextureConfig};
+use crate::{ZoomTexture, config::AppConfig};
 
 pub struct DipPlotsApp {
     config: AppConfig,
-    zw_config: ZoomTextureConfig,
 }
 
 impl DipPlotsApp {
@@ -17,28 +14,7 @@ impl DipPlotsApp {
             Default::default()
         };
 
-        let image = ImageReader::open("/home/dmitry/data/develop/cv/plots/image.jpg")
-            .unwrap()
-            .with_guessed_format()
-            .unwrap()
-            .decode()
-            .unwrap();
-
-        let image_samples = image.to_rgba8();
-
-        let ci = ColorImage::from_rgba_unmultiplied(
-            [image.width() as usize, image.height() as usize],
-            image_samples.as_flat_samples().as_slice(),
-        );
-
-        Self {
-            config: config,
-            zw_config: ZoomTextureConfig::from_texture(cc.egui_ctx.load_texture(
-                "dip",
-                ci,
-                egui::TextureOptions::LINEAR,
-            )),
-        }
+        Self { config }
     }
 }
 
@@ -74,7 +50,7 @@ impl eframe::App for DipPlotsApp {
                     });
             }
 
-            let zoom_widget = ZoomTexture::new(&mut self.zw_config, ui.available_size());
+            let zoom_widget = ZoomTexture::new(&mut self.config.zt_state, ui.available_size());
             ui.add(zoom_widget);
         });
     }

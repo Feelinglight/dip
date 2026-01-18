@@ -2,6 +2,7 @@
 
 mod app;
 mod config;
+mod errors;
 mod widgets;
 
 pub use app::DipPlotsApp;
