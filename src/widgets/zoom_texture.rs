@@ -1,7 +1,9 @@
 use std::path::{Path, PathBuf};
 
 use crate::errors::LoadImageError;
-use egui::{Align2, Color32, ColorImage, FontId, Painter, Pos2, Rect, TextureHandle, Vec2, Widget};
+use egui::{
+    Align2, Color32, ColorImage, Context, FontId, Painter, Pos2, Rect, TextureHandle, Vec2, Widget,
+};
 use image::ImageReader;
 
 const MIN_ZOOM: f32 = 0.05;
@@ -14,7 +16,7 @@ pub struct ZoomTextureState {
     image_path: Option<PathBuf>,
 
     #[serde(skip)]
-    texture: Option<TextureHandle>,
+    texture: Option<Result<TextureHandle, LoadImageError>>,
 
     zoom: f32,
     pan: Vec2,
@@ -32,13 +34,40 @@ impl Default for ZoomTextureState {
 }
 
 impl ZoomTextureState {
-    pub fn load_image(path: &Path) -> Self {
-        Self {
-            image_path: Some(path.to_path_buf()),
-            texture: None,
-            zoom: 1.,
-            pan: Vec2::ZERO,
+    /// Перезагружает картинку по уже установленному пути `self.image_path`
+    pub fn reload_image(&mut self, ctx: &Context) {
+        if let Some(path) = &self.image_path {
+            self.texture = Some(self._load_image(ctx, path));
         }
+    }
+
+    /// Загружает картинку по заданному пути
+    pub fn load_image(&mut self, ctx: &Context, path: &Path) {
+        *self = Self {
+            image_path: Some(path.to_path_buf()),
+            texture: Some(self._load_image(ctx, path)),
+            ..Default::default()
+        }
+    }
+
+    fn _load_image(&self, ctx: &Context, path: &Path) -> Result<TextureHandle, LoadImageError> {
+        let rgb_image = ImageReader::open(path)?
+            .with_guessed_format()?
+            .decode()?
+            .to_rgba8();
+
+        let colored_image = ColorImage::from_rgba_unmultiplied(
+            [rgb_image.width() as usize, rgb_image.height() as usize],
+            rgb_image.as_flat_samples().as_slice(),
+        );
+
+        Ok(ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR))
+    }
+
+    /// Сбрасывает параметры отображения картинки, такие как zoom и pan
+    pub fn reset_parameters(&mut self) {
+        self.zoom = 1.;
+        self.pan = Vec2::ZERO;
     }
 }
 
@@ -53,25 +82,6 @@ impl<'a> ZoomTexture<'a> {
             state,
             available_size,
         }
-    }
-
-    fn load_image(self, ui: &mut egui::Ui) -> Result<(), LoadImageError> {
-        let rgb_image = ImageReader::open("/home/dmitry/data/develop/cv/plots/image.jpg")?
-            .with_guessed_format()?
-            .decode()?
-            .to_rgba8();
-
-        let colored_image = ColorImage::from_rgba_unmultiplied(
-            [rgb_image.width() as usize, rgb_image.height() as usize],
-            rgb_image.as_flat_samples().as_slice(),
-        );
-
-        self.state.texture.get_or_insert_with(|| {
-            ui.ctx()
-                .load_texture("dip", colored_image, egui::TextureOptions::LINEAR)
-        });
-
-        Ok(())
     }
 
     /// Рисует на painter белый прямоугольник с текстом ошибки
@@ -104,44 +114,48 @@ impl<'a> Widget for ZoomTexture<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let (response, painter) = ui.allocate_painter(self.available_size, egui::Sense::drag());
 
-        let Some(ref texture) = self.state.texture else {
-            self.show_error(&painter, "Изображение\nне найдено", self.available_size);
-            return response;
-        };
+        match &self.state.texture {
+            None => {
+                self.show_error(&painter, "Изображение\nне найдено", self.available_size);
+            }
+            Some(Err(err)) => {
+                self.show_error(&painter, &format!("{}", err), self.available_size);
+            }
+            Some(Ok(texture)) => {
+                // Подгон зума так, чтобы картинка занимала все доступное пространство при первом
+                // отображении и при этом не выходила за его границы
+                let image_size = texture.size_vec2();
+                let fitted_zoom = fit_zoom(self.available_size, image_size);
+                let zoom = fitted_zoom * self.state.zoom;
 
-        // Подгон зума так, чтобы картинка занимала все доступное пространство при первом
-        // отображении и при этом не выходила за его границы
-        let image_size = texture.size_vec2();
-        let fitted_zoom = fit_zoom(self.available_size, image_size);
-        let zoom = fitted_zoom * self.state.zoom;
+                // Обработка зума колесиком
+                if response.hovered() {
+                    let scroll = ui.input(|i| i.raw_scroll_delta.y);
+                    if scroll != 0.0 {
+                        let zoom_factor = (scroll * ZOOM_SPEED).exp();
+                        self.state.zoom = (self.state.zoom * zoom_factor).clamp(MIN_ZOOM, MAX_ZOOM);
+                    }
+                }
 
-        // Обработка зума колесиком
-        if response.hovered() {
-            let scroll = ui.input(|i| i.raw_scroll_delta.y);
-            if scroll != 0.0 {
-                let zoom_factor = (scroll * ZOOM_SPEED).exp();
-                self.state.zoom = (self.state.zoom * zoom_factor).clamp(MIN_ZOOM, MAX_ZOOM);
+                // Перетаскивание мышью
+                if response.dragged() {
+                    self.state.pan += response.drag_delta();
+                }
+
+                let zoomed_size = image_size * zoom;
+                let rect = egui::Rect::from_min_size(
+                    response.rect.center() - zoomed_size / 2.0 + self.state.pan,
+                    zoomed_size,
+                );
+
+                painter.image(
+                    texture.id(),
+                    rect,
+                    egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                    egui::Color32::WHITE,
+                );
             }
         }
-
-        // Перетаскивание мышью
-        if response.dragged() {
-            self.state.pan += response.drag_delta();
-        }
-
-        let zoomed_size = image_size * zoom;
-        let rect = egui::Rect::from_min_size(
-            response.rect.center() - zoomed_size / 2.0 + self.state.pan,
-            zoomed_size,
-        );
-
-        painter.image(
-            texture.id(),
-            rect,
-            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-            egui::Color32::WHITE,
-        );
-
         response
     }
 }

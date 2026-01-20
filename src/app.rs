@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use egui_plot::{Bar, BarChart, Legend, Plot};
 
 use crate::{ZoomTexture, config::AppConfig};
@@ -8,11 +10,13 @@ pub struct DipPlotsApp {
 
 impl DipPlotsApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let config: AppConfig = if let Some(storage) = cc.storage {
+        let mut config: AppConfig = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             Default::default()
         };
+
+        config.zt_state.reload_image(&cc.egui_ctx);
 
         Self { config }
     }
@@ -36,7 +40,22 @@ impl eframe::App for DipPlotsApp {
 
             ui.separator();
 
-            ui.checkbox(&mut self.config.hist_enable, "Показать гистограмму");
+            ui.horizontal(|ui| {
+                ui.text_edit_singleline(&mut self.config.image_path_edit_text);
+
+                if ui.button("Открыть изображение").clicked() {
+                    self.config
+                        .zt_state
+                        .load_image(ui.ctx(), Path::new(&self.config.image_path_edit_text));
+                }
+
+                if ui.button("Сбросить расположение").clicked() {
+                    self.config.zt_state.reset_parameters();
+                }
+
+                ui.separator();
+                ui.checkbox(&mut self.config.hist_enable, "Показать гистограмму");
+            });
 
             ui.separator();
 
