@@ -1,11 +1,13 @@
 use std::path::Path;
 
+use egui_file_dialog::FileDialog;
 use egui_plot::{Bar, BarChart, Legend, Plot};
 
 use crate::{ZoomTexture, config::AppConfig};
 
 pub struct DipPlotsApp {
     config: AppConfig,
+    file_dialog: FileDialog,
 }
 
 impl DipPlotsApp {
@@ -20,7 +22,10 @@ impl DipPlotsApp {
             .zt_state
             .load_image(&cc.egui_ctx, Path::new(&config.image_path_edit_text), false);
 
-        Self { config }
+        Self {
+            config,
+            file_dialog: FileDialog::new(),
+        }
     }
 }
 
@@ -43,22 +48,15 @@ impl eframe::App for DipPlotsApp {
             ui.separator();
 
             ui.horizontal(|ui| {
-                ui.text_edit_singleline(&mut self.config.image_path_edit_text);
-
-                if ui.button("Открыть изображение").clicked() {
-                    self.config.zt_state.load_image(
-                        ui.ctx(),
-                        Path::new(&self.config.image_path_edit_text),
-                        true,
-                    );
-                }
+                self.pick_file(ctx, ui);
 
                 if ui.button("Сбросить расположение").clicked() {
                     self.config.zt_state.reset_parameters();
                 }
 
-                ui.separator();
-                ui.checkbox(&mut self.config.hist_enable, "Показать гистограмму");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.checkbox(&mut self.config.hist_enable, "Показать гистограмму");
+                });
             });
 
             ui.separator();
@@ -78,6 +76,29 @@ impl eframe::App for DipPlotsApp {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, &self.config);
+    }
+}
+
+impl DipPlotsApp {
+    fn pick_file(&mut self, ctx: &egui::Context, ui: &mut egui::Ui) {
+        if ui.button("Открыть изображение").clicked() {
+            self.file_dialog.pick_file();
+        }
+        self.file_dialog.update(ctx);
+
+        if let Some(path) = self.file_dialog.take_picked()
+            && let Some(path_str) = path.to_str()
+        {
+            self.config.image_path_edit_text = String::from(path_str);
+
+            self.config.zt_state.load_image(
+                ui.ctx(),
+                Path::new(&self.config.image_path_edit_text),
+                true,
+            );
+        }
+
+        ui.text_edit_singleline(&mut self.config.image_path_edit_text);
     }
 }
 
