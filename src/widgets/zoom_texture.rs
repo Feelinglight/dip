@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::errors::LoadImageError;
 use egui::{
@@ -13,8 +13,6 @@ const ZOOM_SPEED: f32 = 0.005;
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ZoomTextureState {
-    image_path: Option<PathBuf>,
-
     #[serde(skip)]
     texture: Option<Result<TextureHandle, LoadImageError>>,
 
@@ -25,7 +23,6 @@ pub struct ZoomTextureState {
 impl Default for ZoomTextureState {
     fn default() -> Self {
         Self {
-            image_path: None,
             texture: None,
             zoom: 1.,
             pan: Vec2::ZERO,
@@ -34,19 +31,14 @@ impl Default for ZoomTextureState {
 }
 
 impl ZoomTextureState {
-    /// Перезагружает картинку по уже установленному пути `self.image_path`
-    pub fn reload_image(&mut self, ctx: &Context) {
-        if let Some(path) = &self.image_path {
-            self.texture = Some(self._load_image(ctx, path));
-        }
-    }
-
     /// Загружает картинку по заданному пути
-    pub fn load_image(&mut self, ctx: &Context, path: &Path) {
-        *self = Self {
-            image_path: Some(path.to_path_buf()),
-            texture: Some(self._load_image(ctx, path)),
-            ..Default::default()
+    /// Если установлен флаг ``reset_params``, то сбрасывает параметры отображения картинки,
+    /// такие как zoom и pan
+    pub fn load_image(&mut self, ctx: &Context, path: &Path, reset_params: bool) {
+        self.texture = Some(self._load_image(ctx, path));
+
+        if reset_params {
+            self.reset_parameters();
         }
     }
 
@@ -64,7 +56,6 @@ impl ZoomTextureState {
         Ok(ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR))
     }
 
-    /// Сбрасывает параметры отображения картинки, такие как zoom и pan
     pub fn reset_parameters(&mut self) {
         self.zoom = 1.;
         self.pan = Vec2::ZERO;

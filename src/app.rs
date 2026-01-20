@@ -16,7 +16,9 @@ impl DipPlotsApp {
             Default::default()
         };
 
-        config.zt_state.reload_image(&cc.egui_ctx);
+        config
+            .zt_state
+            .load_image(&cc.egui_ctx, Path::new(&config.image_path_edit_text), false);
 
         Self { config }
     }
@@ -44,9 +46,11 @@ impl eframe::App for DipPlotsApp {
                 ui.text_edit_singleline(&mut self.config.image_path_edit_text);
 
                 if ui.button("Открыть изображение").clicked() {
-                    self.config
-                        .zt_state
-                        .load_image(ui.ctx(), Path::new(&self.config.image_path_edit_text));
+                    self.config.zt_state.load_image(
+                        ui.ctx(),
+                        Path::new(&self.config.image_path_edit_text),
+                        true,
+                    );
                 }
 
                 if ui.button("Сбросить расположение").clicked() {
@@ -60,13 +64,11 @@ impl eframe::App for DipPlotsApp {
             ui.separator();
 
             if self.config.hist_enable {
-                egui::SidePanel::right("plots")
-                    // .default_width(self.panel_response)
-                    .show_inside(ui, |ui| {
-                        ui.vertical(|ui| {
-                            histogram(ui);
-                        });
+                egui::SidePanel::right("plots").show_inside(ui, |ui| {
+                    ui.vertical(|ui| {
+                        histogram(ui);
                     });
+                });
             }
 
             let zoom_widget = ZoomTexture::new(&mut self.config.zt_state, ui.available_size());
