@@ -36,7 +36,7 @@ impl DipPlotsApp {
     fn reload_image(&mut self, ctx: &egui::Context) {
         let image = load_image(Path::new(&self.config.image_path_edit_text));
         self.config.zt_state.set_texture(ctx, image.as_ref(), false);
-        self.image = image.ok()
+        self.image = image.ok();
     }
 
     fn update_zoom_texture(&mut self, ctx: &egui::Context) {
@@ -69,10 +69,6 @@ impl eframe::App for DipPlotsApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Diplib visualizer");
-
-            ui.separator();
-
             ui.horizontal(|ui| {
                 self.pick_file(ctx, ui);
 

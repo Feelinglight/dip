@@ -1,4 +1,14 @@
+// #![warn(clippy::all, rust_2018_idioms)]
 use std::path::PathBuf;
+
+mod app;
+mod config;
+mod errors;
+mod widgets;
+
+pub use app::DipPlotsApp;
+
+pub use widgets::zoom_texture::ZoomTexture;
 
 fn main() -> eframe::Result {
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
@@ -11,8 +21,8 @@ fn main() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "DIP plots",
+        "DIP visualizer",
         native_options,
-        Box::new(|cc| Ok(Box::new(plots::DipPlotsApp::new(cc)))),
+        Box::new(|cc| Ok(Box::new(DipPlotsApp::new(cc)))),
     )
 }
