@@ -2,12 +2,15 @@ use std::path::Path;
 
 use egui_file_dialog::FileDialog;
 use egui_plot::{Bar, BarChart, Legend, Plot};
+use image::{GrayImage, ImageReader};
 
-use crate::{ZoomTexture, config::AppConfig};
+use crate::{ZoomTexture, config::AppConfig, errors::LoadImageError};
 
 pub struct DipPlotsApp {
     config: AppConfig,
     file_dialog: FileDialog,
+
+    image: Option<GrayImage>,
 }
 
 impl DipPlotsApp {
@@ -18,13 +21,36 @@ impl DipPlotsApp {
             Default::default()
         };
 
+        let image = load_image(Path::new(&config.image_path_edit_text));
         config
             .zt_state
-            .load_image(&cc.egui_ctx, Path::new(&config.image_path_edit_text), false);
+            .set_texture(&cc.egui_ctx, image.as_ref(), false);
 
         Self {
             config,
             file_dialog: FileDialog::new(),
+            image: image.ok(),
+        }
+    }
+
+    fn reload_image(&mut self, ctx: &egui::Context) {
+        let image = load_image(Path::new(&self.config.image_path_edit_text));
+        self.config.zt_state.set_texture(ctx, image.as_ref(), false);
+        self.image = image.ok()
+    }
+
+    fn update_zoom_texture(&mut self, ctx: &egui::Context) {
+        if let Some(img) = &self.image {
+            self.config.zt_state.set_texture(ctx, Ok(img), false);
+        }
+    }
+
+    fn test_function(&mut self, ui: &mut egui::Ui) {
+        if let Some(img) = &mut self.image {
+            for sample in img.as_flat_samples_mut().samples.iter_mut() {
+                *sample = sample.saturating_add(10);
+            }
+            self.update_zoom_texture(ui.ctx());
         }
     }
 }
@@ -52,6 +78,10 @@ impl eframe::App for DipPlotsApp {
 
                 if ui.button("Сбросить расположение").clicked() {
                     self.config.zt_state.reset_parameters();
+                }
+
+                if ui.button("Тест").clicked() {
+                    self.test_function(ui);
                 }
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -90,12 +120,7 @@ impl DipPlotsApp {
             && let Some(path_str) = path.to_str()
         {
             self.config.image_path_edit_text = String::from(path_str);
-
-            self.config.zt_state.load_image(
-                ui.ctx(),
-                Path::new(&self.config.image_path_edit_text),
-                true,
-            );
+            self.reload_image(ui.ctx());
         }
 
         ui.text_edit_singleline(&mut self.config.image_path_edit_text);
@@ -127,4 +152,11 @@ fn histogram(ui: &mut egui::Ui) {
         .allow_drag(egui::Vec2b::new(true, true))
         .allow_scroll(egui::Vec2b::new(false, false))
         .show(ui, |plot_ui| plot_ui.bar_chart(chart));
+}
+
+fn load_image(path: &Path) -> Result<GrayImage, LoadImageError> {
+    Ok(ImageReader::open(path)?
+        .with_guessed_format()?
+        .decode()?
+        .to_luma8())
 }

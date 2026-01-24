@@ -1,10 +1,9 @@
-use std::path::Path;
-
-use crate::errors::LoadImageError;
 use egui::{
     Align2, Color32, ColorImage, Context, FontId, Painter, Pos2, Rect, TextureHandle, Vec2, Widget,
 };
-use image::ImageReader;
+use image::GrayImage;
+
+use crate::errors::LoadImageError;
 
 const MIN_ZOOM: f32 = 0.05;
 const MAX_ZOOM: f32 = 20.;
@@ -14,7 +13,7 @@ const ZOOM_SPEED: f32 = 0.005;
 #[serde(default)]
 pub struct ZoomTextureState {
     #[serde(skip)]
-    texture: Option<Result<TextureHandle, LoadImageError>>,
+    texture: Result<TextureHandle, String>,
 
     zoom: f32,
     pan: Vec2,
@@ -23,7 +22,7 @@ pub struct ZoomTextureState {
 impl Default for ZoomTextureState {
     fn default() -> Self {
         Self {
-            texture: None,
+            texture: Err(String::from("Выберите изображение")),
             zoom: 1.,
             pan: Vec2::ZERO,
         }
@@ -34,26 +33,26 @@ impl ZoomTextureState {
     /// Загружает картинку по заданному пути
     /// Если установлен флаг ``reset_params``, то сбрасывает параметры отображения картинки,
     /// такие как zoom и pan
-    pub fn load_image(&mut self, ctx: &Context, path: &Path, reset_params: bool) {
-        self.texture = Some(self._load_image(ctx, path));
+    pub fn set_texture(
+        &mut self,
+        ctx: &Context,
+        image: Result<&GrayImage, &LoadImageError>,
+        reset_params: bool,
+    ) {
+        self.texture = match image {
+            Ok(img) => {
+                let colored_image = ColorImage::from_gray(
+                    [img.width() as usize, img.height() as usize],
+                    img.as_flat_samples().as_slice(),
+                );
+                Ok(ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR))
+            }
+            Err(load_error) => Err(load_error.to_string()),
+        };
 
         if reset_params {
             self.reset_parameters();
         }
-    }
-
-    fn _load_image(&self, ctx: &Context, path: &Path) -> Result<TextureHandle, LoadImageError> {
-        let rgb_image = ImageReader::open(path)?
-            .with_guessed_format()?
-            .decode()?
-            .to_rgba8();
-
-        let colored_image = ColorImage::from_rgba_unmultiplied(
-            [rgb_image.width() as usize, rgb_image.height() as usize],
-            rgb_image.as_flat_samples().as_slice(),
-        );
-
-        Ok(ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR))
     }
 
     pub fn reset_parameters(&mut self) {
@@ -106,13 +105,10 @@ impl<'a> Widget for ZoomTexture<'a> {
         let (response, painter) = ui.allocate_painter(self.available_size, egui::Sense::drag());
 
         match &self.state.texture {
-            None => {
-                self.show_error(&painter, "Изображение\nне найдено", self.available_size);
-            }
-            Some(Err(err)) => {
+            Err(err) => {
                 self.show_error(&painter, &format!("{}", err), self.available_size);
             }
-            Some(Ok(texture)) => {
+            Ok(texture) => {
                 // Подгон зума так, чтобы картинка занимала все доступное пространство при первом
                 // отображении и при этом не выходила за его границы
                 let image_size = texture.size_vec2();
