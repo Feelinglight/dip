@@ -1,4 +1,3 @@
-// #![warn(clippy::all, rust_2018_idioms)]
 use std::path::PathBuf;
 
 mod app;

@@ -950,6 +950,7 @@ dependencies = [
  "egui_plot",
  "env_logger",
  "image",
+ "intensity",
  "log",
  "serde",
 ]
@@ -1921,6 +1922,9 @@ dependencies = [
 [[package]]
 name = "intensity"
 version = "0.1.0"
+dependencies = [
+ "image",
+]
 
 [[package]]
 name = "interpolate_name"

@@ -6,30 +6,36 @@ use image::{GrayImage, ImageReader};
 
 use crate::{ZoomTexture, config::AppConfig, errors::LoadImageError};
 
+use intensity::hist::{HistArray, make_option_hist};
+
 pub struct DipPlotsApp {
     config: AppConfig,
     file_dialog: FileDialog,
 
     image: Option<GrayImage>,
+    image_hist: HistArray,
 }
 
 impl DipPlotsApp {
+    #[must_use]
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut config: AppConfig = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
-            Default::default()
+            AppConfig::default()
         };
 
         let image = load_image(Path::new(&config.image_path_edit_text));
         config
             .zt_state
             .set_texture(&cc.egui_ctx, image.as_ref(), false);
+        let hist = make_option_hist(image.as_ref().ok());
 
         Self {
             config,
             file_dialog: FileDialog::new(),
             image: image.ok(),
+            image_hist: hist,
         }
     }
 
@@ -37,6 +43,7 @@ impl DipPlotsApp {
         let image = load_image(Path::new(&self.config.image_path_edit_text));
         self.config.zt_state.set_texture(ctx, image.as_ref(), false);
         self.image = image.ok();
+        self.update_hist();
     }
 
     fn update_zoom_texture(&mut self, ctx: &egui::Context) {
@@ -50,8 +57,33 @@ impl DipPlotsApp {
             for sample in img.as_flat_samples_mut().samples.iter_mut() {
                 *sample = sample.saturating_add(10);
             }
+            self.update_hist();
             self.update_zoom_texture(ui.ctx());
         }
+    }
+
+    fn update_hist(&mut self) {
+        self.image_hist = make_option_hist(self.image.as_ref());
+    }
+
+    fn show_histogram(&self, ui: &mut egui::Ui) {
+        #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
+        let chart = BarChart::new(
+            "Гистограмма изображения",
+            (0..self.image_hist.len())
+                .step_by(1)
+                .map(|x| Bar::new(x as f64, self.image_hist[x]))
+                .collect(),
+        )
+        .color(egui::Color32::LIGHT_BLUE);
+
+        Plot::new("DIP intensity hist")
+            .legend(Legend::default())
+            .clamp_grid(true)
+            .allow_zoom(egui::Vec2b::new(true, true))
+            .allow_drag(egui::Vec2b::new(true, true))
+            .allow_scroll(egui::Vec2b::new(false, false))
+            .show(ui, |plot_ui| plot_ui.bar_chart(chart));
     }
 }
 
@@ -90,7 +122,7 @@ impl eframe::App for DipPlotsApp {
             if self.config.hist_enable {
                 egui::SidePanel::right("plots").show_inside(ui, |ui| {
                     ui.vertical(|ui| {
-                        histogram(ui);
+                        self.show_histogram(ui);
                     });
                 });
             }
@@ -121,33 +153,6 @@ impl DipPlotsApp {
 
         ui.text_edit_singleline(&mut self.config.image_path_edit_text);
     }
-}
-
-fn histogram(ui: &mut egui::Ui) {
-    let chart = BarChart::new(
-        "Normal Distribution",
-        (-395..=395)
-            .step_by(1)
-            .map(|x| x as f64 * 0.01)
-            .map(|x| {
-                (
-                    x,
-                    (-x * x / 2.0).exp() / (2.0 * std::f64::consts::PI).sqrt(),
-                )
-            })
-            .map(|(x, f)| Bar::new(x, f * 10.0).width(0.1))
-            .collect(),
-    )
-    .color(egui::Color32::LIGHT_BLUE);
-
-    Plot::new("Normal Distribution Demo")
-        // .(Vec2 { x: 400., y: 0. })
-        .legend(Legend::default())
-        .clamp_grid(true)
-        .allow_zoom(egui::Vec2b::new(true, true))
-        .allow_drag(egui::Vec2b::new(true, true))
-        .allow_scroll(egui::Vec2b::new(false, false))
-        .show(ui, |plot_ui| plot_ui.bar_chart(chart));
 }
 
 fn load_image(path: &Path) -> Result<GrayImage, LoadImageError> {
