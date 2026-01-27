@@ -14,10 +14,10 @@ impl fmt::Display for LoadImageError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             LoadImageError::IoError(err) => {
-                write!(f, "Ошибка IO: \"{}\"", err)
+                write!(f, "Ошибка IO: \"{err}\"")
             }
             LoadImageError::DecodeImageError(err) => {
-                write!(f, "Не удалось декодировать изображение: \"{}\"", err)
+                write!(f, "Не удалось декодировать изображение: \"{err}\"")
             }
         }
     }

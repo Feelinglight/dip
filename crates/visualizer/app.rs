@@ -6,6 +6,7 @@ use image::{GrayImage, ImageReader};
 
 use crate::{ZoomTexture, config::AppConfig, errors::LoadImageError};
 
+use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 
 pub struct DipPlotsApp {
@@ -54,9 +55,7 @@ impl DipPlotsApp {
 
     fn test_function(&mut self, ui: &mut egui::Ui) {
         if let Some(img) = &mut self.image {
-            for sample in img.as_flat_samples_mut().samples.iter_mut() {
-                *sample = sample.saturating_add(10);
-            }
+            img.negative_inplace();
             self.update_hist();
             self.update_zoom_texture(ui.ctx());
         }
@@ -106,6 +105,10 @@ impl eframe::App for DipPlotsApp {
 
                 if ui.button("Сбросить расположение").clicked() {
                     self.config.zt_state.reset_parameters();
+                }
+
+                if ui.button("Отменить преобразования").clicked() {
+                    self.reload_image(ctx);
                 }
 
                 if ui.button("Тест").clicked() {

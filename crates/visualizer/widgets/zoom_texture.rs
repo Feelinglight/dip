@@ -75,7 +75,7 @@ impl<'a> ZoomTexture<'a> {
     }
 
     /// Рисует на painter белый прямоугольник с текстом ошибки
-    fn show_error(&self, painter: &Painter, text: &str, rect_size: Vec2) {
+    fn show_error(painter: &Painter, text: &str, rect_size: Vec2) {
         painter.rect_filled(
             Rect {
                 min: Pos2 { x: 0., y: 0. },
@@ -100,13 +100,13 @@ impl<'a> ZoomTexture<'a> {
     }
 }
 
-impl<'a> Widget for ZoomTexture<'a> {
+impl Widget for ZoomTexture<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let (response, painter) = ui.allocate_painter(self.available_size, egui::Sense::drag());
 
         match &self.state.texture {
             Err(err) => {
-                self.show_error(&painter, &format!("{}", err), self.available_size);
+                ZoomTexture::show_error(&painter, err, self.available_size);
             }
             Ok(texture) => {
                 // Подгон зума так, чтобы картинка занимала все доступное пространство при первом
