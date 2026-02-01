@@ -107,7 +107,7 @@ impl eframe::App for DipPlotsApp {
                     self.config.zt_state.reset_parameters();
                 }
 
-                if ui.button("Отменить преобразования").clicked() {
+                if ui.button("Перезагрузить").clicked() {
                     self.reload_image(ctx);
                 }
 
@@ -130,8 +130,11 @@ impl eframe::App for DipPlotsApp {
                 });
             }
 
-            let zoom_widget = ZoomTexture::new(&mut self.config.zt_state, ui.available_size());
-            ui.add(zoom_widget);
+            let zoom_texture = ZoomTexture::new(&mut self.config.zt_state, ui.available_size());
+            let zt_response = ui.add(zoom_texture);
+            if zt_response.double_clicked() {
+                println!("lkj");
+            }
         });
     }
 

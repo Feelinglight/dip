@@ -102,7 +102,8 @@ impl<'a> ZoomTexture<'a> {
 
 impl Widget for ZoomTexture<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let (response, painter) = ui.allocate_painter(self.available_size, egui::Sense::drag());
+        let (response, painter) =
+            ui.allocate_painter(self.available_size, egui::Sense::click_and_drag());
 
         match &self.state.texture {
             Err(err) => {
