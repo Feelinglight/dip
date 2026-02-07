@@ -1,5 +1,6 @@
 [package]
 name = "dip"
+description = "Digital image processing lib and visualizer"
 version = "0.1.0"
 edition = "2024"
 
