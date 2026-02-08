@@ -959,6 +959,7 @@ dependencies = [
  "egui-file-dialog",
  "egui_extras",
  "egui_plot",
+ "egui_tiles",
  "env_logger",
  "image",
  "intensity",
@@ -1216,6 +1217,19 @@ dependencies = [
  "ahash",
  "egui",
  "emath",
+]
+
+[[package]]
+name = "egui_tiles"
+version = "0.14.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7ef184e589f0a80560bd3b63017634642d1ba112a8a8d9b29341f7cafd04601f"
+dependencies = [
+ "ahash",
+ "egui",
+ "itertools",
+ "log",
+ "serde",
 ]
 
 [[package]]

@@ -88,7 +88,7 @@ impl ImageHistState {
         }
     }
 
-    fn show_histogram(&self, ui: &mut egui::Ui) {
+    fn show_histogram(&self, unique_id: usize, ui: &mut egui::Ui) {
         #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
         let chart = BarChart::new(
             "Гистограмма изображения",
@@ -99,7 +99,7 @@ impl ImageHistState {
         )
         .color(egui::Color32::LIGHT_BLUE);
 
-        Plot::new("DIP intensity hist")
+        Plot::new(format!("dip-intensity-hist-{unique_id}"))
             .legend(Legend::default())
             .clamp_grid(true)
             .allow_zoom(egui::Vec2b::new(true, true))
@@ -110,13 +110,15 @@ impl ImageHistState {
 }
 
 pub struct ImageHist<'a> {
+    unique_id: usize,
     state: &'a mut ImageHistState,
     open_image_requested: bool,
 }
 
 impl<'a> ImageHist<'a> {
-    pub fn new(state: &'a mut ImageHistState) -> ImageHist<'a> {
+    pub fn new(unique_id: usize, state: &'a mut ImageHistState) -> ImageHist<'a> {
         Self {
+            unique_id,
             state,
             open_image_requested: false,
         }
@@ -125,52 +127,56 @@ impl<'a> ImageHist<'a> {
 
 impl Widget for &mut ImageHist<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let open_image_button_resp = ui.horizontal(|ui| {
-            let open_file_button =
-                egui::Button::image(egui::include_image!("../icons/open-file.png"));
-            let resp = ui.add(open_file_button);
+        ui.vertical(|ui| {
+            let open_image_button_resp = ui.horizontal(|ui| {
+                let open_file_button =
+                    egui::Button::image(egui::include_image!("../icons/open-file.png"));
+                let resp = ui.add(open_file_button);
 
-            let load_image_button =
-                egui::Button::image(egui::include_image!("../icons/load-image.png"));
-            if ui.add(load_image_button).clicked() {
-                self.state.zt_state.reset_parameters();
-                self.state.reload_image(ui.ctx());
-            }
+                let load_image_button =
+                    egui::Button::image(egui::include_image!("../icons/load-image.png"));
+                if ui.add(load_image_button).clicked() {
+                    self.state.zt_state.reset_parameters();
+                    self.state.reload_image(ui.ctx());
+                }
 
-            ui.text_edit_singleline(&mut self.state.image_path_edit_text);
+                ui.text_edit_singleline(&mut self.state.image_path_edit_text);
 
-            let clear_image_button =
-                egui::Button::image(egui::include_image!("../icons/clear-image.png"));
-            if ui.add(clear_image_button).clicked() {
-                self.state.zt_state.reset_parameters();
-            }
+                let clear_image_button =
+                    egui::Button::image(egui::include_image!("../icons/clear-image.png"));
+                if ui.add(clear_image_button).clicked() {
+                    self.state.zt_state.reset_parameters();
+                }
 
-            if ui.button("Тест").clicked() {
-                self.state.test_function(ui);
-            }
+                if ui.button("Тест").clicked() {
+                    self.state.test_function(ui);
+                }
 
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.checkbox(&mut self.state.hist_enable, "Показать гистограмму");
-            });
-            resp
-        });
-
-        ui.separator();
-
-        if self.state.hist_enable {
-            egui::SidePanel::right("plots").show_inside(ui, |ui| {
-                ui.vertical(|ui| {
-                    self.state.show_histogram(ui);
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    ui.checkbox(&mut self.state.hist_enable, "Показать гистограмму");
                 });
+                resp
             });
-        }
 
-        let zoom_texture = ZoomTexture::new(&mut self.state.zt_state, ui.available_size());
-        let zt_response = ui.add(zoom_texture);
-        if open_image_button_resp.inner.clicked() || zt_response.double_clicked() {
-            self.open_image_requested = true;
-        }
-        zt_response
+            ui.separator();
+
+            if self.state.hist_enable {
+                egui::SidePanel::right(format!("image-hist-side-panel-{}", self.unique_id))
+                    .show_inside(ui, |ui| {
+                        ui.vertical(|ui| {
+                            self.state.show_histogram(self.unique_id, ui);
+                        });
+                    });
+            }
+
+            let zoom_texture = ZoomTexture::new(&mut self.state.zt_state, ui.available_size());
+            let zt_response = ui.add(zoom_texture);
+            if open_image_button_resp.inner.clicked() || zt_response.double_clicked() {
+                self.open_image_requested = true;
+            }
+            zt_response
+        })
+        .inner
     }
 }
 

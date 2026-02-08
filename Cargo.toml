@@ -20,6 +20,7 @@ serde = "1.0.228"
 intensity = { version = "0.1.0", path = "crates/intensity" }
 egui_extras = { version = "0.33.3", features = ["image"] }
 catppuccin-egui = { version = "5.7.0", default-features = false, features = ["egui33"] }
+egui_tiles = "0.14.1"
 
 [workspace]
 members = [

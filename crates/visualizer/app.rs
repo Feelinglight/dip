@@ -28,6 +28,7 @@ impl DipPlotsApp {
 
 impl eframe::App for DipPlotsApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        let mut unique_id = 0usize;
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
@@ -40,8 +41,9 @@ impl eframe::App for DipPlotsApp {
         });
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            let mut image_hist = ImageHist::new(&mut self.config.image_states);
+            let mut image_hist = ImageHist::new(unique_id, &mut self.config.image_states);
             ui.add(&mut image_hist);
+            unique_id += 1;
             if image_hist.open_image_requested() {
                 self.file_dialog.pick_file();
             }
