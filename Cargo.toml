@@ -4,16 +4,16 @@ description = "Digital image processing lib and visualizer"
 version = "0.1.0"
 edition = "2024"
 
-[[bin]]
-path = "crates/visualizer/main.rs"
-name = "dip"
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
 
 [dependencies]
 eframe = { version = "0.33.3", features = ["persistence"] }
 egui = "0.33.0"
 egui-file-dialog = "0.12.0"
 egui_plot = "0.34.0"
-env_logger = "0.11.8"
 image = "0.25.9"
 log = "0.4.29"
 serde = "1.0.228"
@@ -22,7 +22,29 @@ egui_extras = { version = "0.33.3", features = ["image"] }
 catppuccin-egui = { version = "5.7.0", default-features = false, features = ["egui33"] }
 egui_dock = { version = "0.18.0", features = ["serde"] }
 serde_json = "1.0.149"
+
+# native:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+env_logger = "0.11.8"
 uuid = { version = "1.21.0", features = ["v4"] }
+
+# web:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.50"
+web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
+uuid = { version = "1.21.0", features = ["v4", "js"] }
+chacha20 = { version = "0.10.0-pre.3" }
+
+[profile.release]
+opt-level = 2 # fast and small wasm
+
+# Optimize all dependencies even in debug builds:
+[profile.dev.package."*"]
+opt-level = 2
+
+[[bin]]
+path = "crates/visualizer/main.rs"
+name = "dip"
 
 [workspace]
 members = [
