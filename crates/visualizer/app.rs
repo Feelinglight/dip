@@ -1,6 +1,9 @@
 use crate::{
     config::AppConfig,
-    widgets::{image_hist::ImageHistState, tabs},
+    widgets::{
+        image_hist::ImageHistState,
+        tabs::{self, ImageHistTab},
+    },
 };
 use egui_dock::{DockArea, DockState};
 use egui_file_dialog::FileDialog;
@@ -8,7 +11,7 @@ use egui_file_dialog::FileDialog;
 pub struct DipPlotsApp {
     config: AppConfig,
     file_dialog: FileDialog,
-    tree: DockState<ImageHistState>,
+    tree: DockState<ImageHistTab>,
 }
 
 impl DipPlotsApp {
@@ -25,6 +28,7 @@ impl DipPlotsApp {
         for state in config.image_states.iter_mut() {
             state.init(&cc.egui_ctx);
         }
+
         egui_extras::install_image_loaders(&cc.egui_ctx);
         catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::MOCHA);
 
@@ -32,7 +36,7 @@ impl DipPlotsApp {
             .ok()
             .unwrap_or_else(|| {
                 let mut tree =
-                    DockState::new(vec![ImageHistState::default(), ImageHistState::default()]);
+                    DockState::new(vec![ImageHistTab::default(), ImageHistTab::default()]);
 
                 // let mut tree = DockState::new(vec!["tab1".to_owned(), "tab2".to_owned()]);
                 //
@@ -74,9 +78,9 @@ impl eframe::App for DipPlotsApp {
 
         // egui::CentralPanel::default().show(ctx, |ui| {
 
-        // egui::TopBottomPanel::top("my_top_bar").show(ctx, |ui| {
-        // ui.button("Test");
-        // });
+        egui::TopBottomPanel::top("my_top_bar").show(ctx, |ui| {
+            ui.button("Test");
+        });
 
         DockArea::new(&mut self.tree)
             .style(egui_dock::Style::from_egui(ctx.style().as_ref()))

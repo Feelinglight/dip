@@ -6,7 +6,6 @@ use image::{GrayImage, ImageReader};
 use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 use log::error;
-use uuid::Uuid;
 
 use crate::ZoomTexture;
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
@@ -14,7 +13,6 @@ use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ImageHistState {
-    id: egui::Id,
     zt_state: ZoomTextureState,
     image_path_edit_text: String,
     hist_enable: bool,
@@ -28,7 +26,6 @@ pub struct ImageHistState {
 impl Default for ImageHistState {
     fn default() -> Self {
         Self {
-            id: egui::Id::new(Uuid::new_v4()),
             zt_state: ZoomTextureState::default(),
             image_path_edit_text: String::new(),
             image: None,
@@ -50,10 +47,6 @@ impl ImageHistState {
     /// Загружает изображение по текущему установленному пути и строит его гистограмму
     pub fn init(&mut self, egui_ctx: &Context) {
         self.reload_image(egui_ctx);
-    }
-
-    pub fn id(&self) -> egui::Id {
-        self.id
     }
 
     pub fn image_path(&self) -> &String {
@@ -121,13 +114,15 @@ impl ImageHistState {
 }
 
 pub struct ImageHist<'a> {
+    id_source: egui::Id,
     state: &'a mut ImageHistState,
     open_image_requested: bool,
 }
 
 impl<'a> ImageHist<'a> {
-    pub fn new(state: &'a mut ImageHistState) -> ImageHist<'a> {
+    pub fn new(id_source: impl std::hash::Hash, state: &'a mut ImageHistState) -> ImageHist<'a> {
         Self {
+            id_source: egui::Id::new(id_source),
             state,
             open_image_requested: false,
         }
@@ -136,7 +131,7 @@ impl<'a> ImageHist<'a> {
 
 impl Widget for &mut ImageHist<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let id = ui.make_persistent_id(self.state.id);
+        let id = ui.make_persistent_id(self.id_source);
 
         ui.vertical(|ui| {
             let open_image_button_resp = ui.horizontal(|ui| {
