@@ -15,9 +15,17 @@ impl Default for ImageHistTab {
     }
 }
 
-pub struct TabViewer;
+pub struct TabViewer<'a> {
+    added_tabs: &'a mut Vec<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>,
+}
 
-impl egui_dock::TabViewer for TabViewer {
+impl<'a> TabViewer<'a> {
+    pub fn new(added_tabs: &'a mut Vec<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>) -> Self {
+        Self { added_tabs }
+    }
+}
+
+impl egui_dock::TabViewer for TabViewer<'_> {
     type Tab = ImageHistTab;
 
     fn id(&mut self, tab: &mut Self::Tab) -> egui::Id {
@@ -33,5 +41,13 @@ impl egui_dock::TabViewer for TabViewer {
         ui.add(&mut image_hist);
     }
 
-    fn on_rect_changed(&mut self, _tab: &mut Self::Tab) {}
+    fn on_add(&mut self, surface: egui_dock::SurfaceIndex, node: egui_dock::NodeIndex) {
+        self.added_tabs.push((surface, node));
+    }
+
+    fn on_close(&mut self, _tab: &mut Self::Tab) -> egui_dock::tab_viewer::OnCloseResponse {
+        egui_dock::tab_viewer::OnCloseResponse::Ignore
+    }
+
+    // fn on_rect_changed(&mut self, _tab: &mut Self::Tab) {}
 }

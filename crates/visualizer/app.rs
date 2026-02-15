@@ -12,6 +12,7 @@ pub struct DipPlotsApp {
     config: AppConfig,
     file_dialog: FileDialog,
     tree: DockState<ImageHistTab>,
+    added_tabs: Vec<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>,
 }
 
 impl DipPlotsApp {
@@ -59,6 +60,7 @@ impl DipPlotsApp {
             config,
             file_dialog: FileDialog::new(),
             tree,
+            added_tabs: Vec::new(),
         }
     }
 }
@@ -84,7 +86,14 @@ impl eframe::App for DipPlotsApp {
 
         DockArea::new(&mut self.tree)
             .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
-            .show(ctx, &mut tabs::TabViewer {});
+            .show_add_buttons(true)
+            .show_tab_name_on_hover(true)
+            .show(ctx, &mut tabs::TabViewer::new(&mut self.added_tabs));
+
+        for tab_position in self.added_tabs.drain(..) {
+            self.tree.set_focused_node_and_surface(tab_position);
+            self.tree.push_to_focused_leaf(ImageHistTab::default());
+        }
 
         // unique_id += 1;
         // if image_hist.open_image_requested() {
