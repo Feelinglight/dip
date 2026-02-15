@@ -6,6 +6,7 @@ use image::{GrayImage, ImageReader};
 use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 use log::error;
+use uuid::Uuid;
 
 use crate::ZoomTexture;
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
@@ -13,6 +14,7 @@ use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ImageHistState {
+    id: egui::Id,
     zt_state: ZoomTextureState,
     image_path_edit_text: String,
     hist_enable: bool,
@@ -26,6 +28,7 @@ pub struct ImageHistState {
 impl Default for ImageHistState {
     fn default() -> Self {
         Self {
+            id: egui::Id::new(Uuid::new_v4()),
             zt_state: ZoomTextureState::default(),
             image_path_edit_text: String::new(),
             image: None,
@@ -47,6 +50,14 @@ impl ImageHistState {
     /// Загружает изображение по текущему установленному пути и строит его гистограмму
     pub fn init(&mut self, egui_ctx: &Context) {
         self.reload_image(egui_ctx);
+    }
+
+    pub fn id(&self) -> egui::Id {
+        self.id
+    }
+
+    pub fn image_path(&self) -> &String {
+        &self.image_path_edit_text
     }
 
     // Загружает изображение по пути ``path``
@@ -88,7 +99,7 @@ impl ImageHistState {
         }
     }
 
-    fn show_histogram(&self, unique_id: usize, ui: &mut egui::Ui) {
+    fn show_histogram(&self, id: egui::Id, ui: &mut egui::Ui) {
         #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
         let chart = BarChart::new(
             "Гистограмма изображения",
@@ -99,7 +110,7 @@ impl ImageHistState {
         )
         .color(egui::Color32::LIGHT_BLUE);
 
-        Plot::new(format!("dip-intensity-hist-{unique_id}"))
+        Plot::new(id)
             .legend(Legend::default())
             .clamp_grid(true)
             .allow_zoom(egui::Vec2b::new(true, true))
@@ -110,15 +121,13 @@ impl ImageHistState {
 }
 
 pub struct ImageHist<'a> {
-    unique_id: usize,
     state: &'a mut ImageHistState,
     open_image_requested: bool,
 }
 
 impl<'a> ImageHist<'a> {
-    pub fn new(unique_id: usize, state: &'a mut ImageHistState) -> ImageHist<'a> {
+    pub fn new(state: &'a mut ImageHistState) -> ImageHist<'a> {
         Self {
-            unique_id,
             state,
             open_image_requested: false,
         }
@@ -127,6 +136,8 @@ impl<'a> ImageHist<'a> {
 
 impl Widget for &mut ImageHist<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+        let id = ui.make_persistent_id(self.state.id);
+
         ui.vertical(|ui| {
             let open_image_button_resp = ui.horizontal(|ui| {
                 let open_file_button =
@@ -161,12 +172,11 @@ impl Widget for &mut ImageHist<'_> {
             ui.separator();
 
             if self.state.hist_enable {
-                egui::SidePanel::right(format!("image-hist-side-panel-{}", self.unique_id))
-                    .show_inside(ui, |ui| {
-                        ui.vertical(|ui| {
-                            self.state.show_histogram(self.unique_id, ui);
-                        });
+                egui::SidePanel::right(id).show_inside(ui, |ui| {
+                    ui.vertical(|ui| {
+                        self.state.show_histogram(id, ui);
                     });
+                });
             }
 
             let zoom_texture = ZoomTexture::new(&mut self.state.zt_state, ui.available_size());
