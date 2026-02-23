@@ -1,3 +1,6 @@
+use log::warn;
+use std::{path::Path, sync::mpsc};
+
 use crate::{
     config::AppConfig,
     widgets::{
@@ -5,14 +8,23 @@ use crate::{
         tabs::{self, ImageHistTab},
     },
 };
-use egui_dock::{DockArea, DockState};
-use egui_file_dialog::FileDialog;
+use egui_dock::{DockArea, DockState, NodeIndex, SurfaceIndex};
 
 pub struct DipPlotsApp {
     config: AppConfig,
-    file_dialog: FileDialog,
     tree: DockState<ImageHistTab>,
-    added_tabs: Vec<(egui_dock::SurfaceIndex, egui_dock::NodeIndex)>,
+    filepath_tx: mpsc::Sender<(
+        egui_dock::SurfaceIndex,
+        egui_dock::NodeIndex,
+        String,
+        Vec<u8>,
+    )>,
+    filepath_rx: mpsc::Receiver<(
+        egui_dock::SurfaceIndex,
+        egui_dock::NodeIndex,
+        String,
+        Vec<u8>,
+    )>,
 }
 
 impl DipPlotsApp {
@@ -56,11 +68,13 @@ impl DipPlotsApp {
                 tree
             });
 
+        let (filepath_tx, filepath_rx) = mpsc::channel();
+
         Self {
             config,
-            file_dialog: FileDialog::new(),
             tree,
-            added_tabs: Vec::new(),
+            filepath_tx,
+            filepath_rx,
         }
     }
 }
@@ -81,29 +95,32 @@ impl eframe::App for DipPlotsApp {
         // egui::CentralPanel::default().show(ctx, |ui| {
 
         egui::TopBottomPanel::top("my_top_bar").show(ctx, |ui| {
-            ui.button("Test");
+            if ui.button("Test").clicked() {
+                println!("test");
+            }
         });
 
         DockArea::new(&mut self.tree)
             .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
             .show_add_buttons(true)
             .show_tab_name_on_hover(true)
-            .show(ctx, &mut tabs::TabViewer::new(&mut self.added_tabs));
+            .show(ctx, &mut tabs::TabViewer::new(self.filepath_tx.clone()));
 
-        for tab_position in self.added_tabs.drain(..) {
-            self.tree.set_focused_node_and_surface(tab_position);
-            self.tree.push_to_focused_leaf(ImageHistTab::default());
+        match self.filepath_rx.try_recv() {
+            Ok((surface_idx, node_idx, filepath, data)) => {
+                self.tree
+                    .set_focused_node_and_surface((surface_idx, node_idx));
+                let mut image_hist_state = ImageHistState::default();
+                image_hist_state.load_from_memory(ctx, Path::new(&filepath), &data);
+                self.tree
+                    .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
+                println!("{filepath}");
+            }
+            Err(mpsc::TryRecvError::Disconnected) => {
+                warn!("Канал отключился до того как имя файла было принято");
+            }
+            Err(mpsc::TryRecvError::Empty) => {}
         }
-
-        // unique_id += 1;
-        // if image_hist.open_image_requested() {
-        //     self.file_dialog.pick_file();
-        // }
-        // self.file_dialog.update(ctx);
-        // if let Some(path) = self.file_dialog.take_picked() {
-        //     self.config.image_states.load_image(ui.ctx(), &path);
-        // }
-        // });
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {

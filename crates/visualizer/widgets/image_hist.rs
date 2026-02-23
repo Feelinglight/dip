@@ -2,7 +2,7 @@ use std::path::Path;
 
 use egui::{Context, Widget};
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use image::{GrayImage, ImageReader};
+use image::{GrayImage, ImageReader, load_from_memory};
 use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 use log::error;
@@ -53,8 +53,24 @@ impl ImageHistState {
         &self.image_path_edit_text
     }
 
+    pub fn load_from_memory(&mut self, ctx: &egui::Context, path: &Path, data: &[u8]) {
+        if let Some(image_path) = path.to_str() {
+            if let Ok(image) = image::load_from_memory(data) {
+                self.image_path_edit_text = String::from(image_path);
+                let gray_image: GrayImage = image.to_luma8();
+                self.zt_state.set_texture(ctx, Ok(&gray_image), false);
+                self.image = Some(gray_image);
+                self.update_hist();
+            } else {
+                error!("Ошибка. Не удалось загрузить изображение");
+            }
+        } else {
+            error!("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы");
+        }
+    }
+
     // Загружает изображение по пути ``path``
-    pub fn load_image(&mut self, ctx: &egui::Context, path: &Path) {
+    pub fn load_from_path(&mut self, ctx: &egui::Context, path: &Path) {
         if let Some(image_path) = path.to_str() {
             self.image_path_edit_text = String::from(image_path);
             self.reload_image(ctx);
