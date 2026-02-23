@@ -30,43 +30,22 @@ pub struct DipPlotsApp {
 impl DipPlotsApp {
     #[must_use]
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let mut config: AppConfig = if let Some(storage) = cc.storage {
+        let config: AppConfig = if let Some(storage) = cc.storage {
             eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
         } else {
             AppConfig::default()
         };
 
-        config.image_states = vec![ImageHistState::default()];
-
-        for state in &mut config.image_states {
-            state.init(&cc.egui_ctx);
-        }
-
         egui_extras::install_image_loaders(&cc.egui_ctx);
         catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::MOCHA);
 
-        let tree = serde_json::from_str(&config.tabs_state)
+        let mut tree: DockState<ImageHistTab> = serde_json::from_str(&config.tabs_state)
             .ok()
-            .unwrap_or_else(|| {
-                let mut tree =
-                    DockState::new(vec![ImageHistTab::default(), ImageHistTab::default()]);
+            .unwrap_or_else(|| DockState::new(vec![ImageHistTab::default()]));
 
-                // let mut tree = DockState::new(vec!["tab1".to_owned(), "tab2".to_owned()]);
-                //
-                // let [a, b] = tree.main_surface_mut().split_left(
-                //     NodeIndex::root(),
-                //     0.3,
-                //     vec!["tab3".to_owned()],
-                // );
-                // let [_, _] = tree
-                //     .main_surface_mut()
-                //     .split_below(a, 0.7, vec!["tab4".to_owned()]);
-                // let [_, _] = tree
-                //     .main_surface_mut()
-                //     .split_below(b, 0.5, vec!["tab5".to_owned()]);
-
-                tree
-            });
+        for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
+            image_hist_tab.state.init(&cc.egui_ctx);
+        }
 
         let (filepath_tx, filepath_rx) = mpsc::channel();
 
