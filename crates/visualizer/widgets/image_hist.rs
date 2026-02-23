@@ -2,10 +2,9 @@ use std::path::Path;
 
 use egui::{Context, Widget};
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use image::{GrayImage, ImageReader, load_from_memory};
+use image::{GrayImage, ImageReader};
 use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
-use log::error;
 
 use crate::ZoomTexture;
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
@@ -49,33 +48,48 @@ impl ImageHistState {
         self.reload_image(egui_ctx);
     }
 
-    pub fn image_path(&self) -> &String {
-        &self.image_path_edit_text
-    }
-
-    pub fn load_from_memory(&mut self, ctx: &egui::Context, path: &Path, data: &[u8]) {
+    /// Загружает изображение из массива данных ``data``. Устанавливает путь к изображению в
+    /// ``path``.
+    /// Путь к изображению требуется для повторной загрузки изображения с помощью метода
+    /// ``reload_image``
+    pub fn from_memory(
+        ctx: &egui::Context,
+        path: &Path,
+        data: &[u8],
+    ) -> Result<Self, &'static str> {
         if let Some(image_path) = path.to_str() {
             if let Ok(image) = image::load_from_memory(data) {
-                self.image_path_edit_text = String::from(image_path);
                 let gray_image: GrayImage = image.to_luma8();
-                self.zt_state.set_texture(ctx, Ok(&gray_image), false);
-                self.image = Some(gray_image);
-                self.update_hist();
+
+                let mut zt_state = ZoomTextureState::default();
+                zt_state.set_texture(ctx, Ok(&gray_image), false);
+
+                let mut state = Self {
+                    zt_state,
+                    image_path_edit_text: String::from(image_path),
+                    image: Some(gray_image),
+                    ..Default::default()
+                };
+                state.update_hist();
+                Ok(state)
             } else {
-                error!("Ошибка. Не удалось загрузить изображение");
+                Err("Ошибка. Не удалось загрузить изображение")
             }
         } else {
-            error!("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы");
+            Err("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы")
         }
     }
 
-    // Загружает изображение по пути ``path``
-    pub fn load_from_path(&mut self, ctx: &egui::Context, path: &Path) {
+    pub fn from_path(ctx: &egui::Context, path: &Path) -> Result<Self, &'static str> {
         if let Some(image_path) = path.to_str() {
-            self.image_path_edit_text = String::from(image_path);
-            self.reload_image(ctx);
+            let mut state = Self {
+                image_path_edit_text: String::from(image_path),
+                ..Default::default()
+            };
+            state.reload_image(ctx);
+            Ok(state)
         } else {
-            error!("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы");
+            Err("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы")
         }
     }
 
@@ -85,6 +99,10 @@ impl ImageHistState {
         self.zt_state.set_texture(ctx, image.as_ref(), false);
         self.image = image.ok();
         self.update_hist();
+    }
+
+    pub fn image_path(&self) -> &String {
+        &self.image_path_edit_text
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние

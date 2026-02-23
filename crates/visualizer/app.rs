@@ -1,4 +1,4 @@
-use log::warn;
+use log::{error, warn};
 use std::{path::Path, sync::mpsc};
 
 use crate::{
@@ -8,7 +8,7 @@ use crate::{
         tabs::{self, ImageHistTab},
     },
 };
-use egui_dock::{DockArea, DockState, NodeIndex, SurfaceIndex};
+use egui_dock::{DockArea, DockState};
 
 pub struct DipPlotsApp {
     config: AppConfig,
@@ -38,7 +38,7 @@ impl DipPlotsApp {
 
         config.image_states = vec![ImageHistState::default()];
 
-        for state in config.image_states.iter_mut() {
+        for state in &mut config.image_states {
             state.init(&cc.egui_ctx);
         }
 
@@ -92,8 +92,6 @@ impl eframe::App for DipPlotsApp {
             });
         });
 
-        // egui::CentralPanel::default().show(ctx, |ui| {
-
         egui::TopBottomPanel::top("my_top_bar").show(ctx, |ui| {
             if ui.button("Test").clicked() {
                 println!("test");
@@ -108,13 +106,17 @@ impl eframe::App for DipPlotsApp {
 
         match self.filepath_rx.try_recv() {
             Ok((surface_idx, node_idx, filepath, data)) => {
-                self.tree
-                    .set_focused_node_and_surface((surface_idx, node_idx));
-                let mut image_hist_state = ImageHistState::default();
-                image_hist_state.load_from_memory(ctx, Path::new(&filepath), &data);
-                self.tree
-                    .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
-                println!("{filepath}");
+                match ImageHistState::from_memory(ctx, Path::new(&filepath), &data) {
+                    Ok(image_hist_state) => {
+                        self.tree
+                            .set_focused_node_and_surface((surface_idx, node_idx));
+                        self.tree
+                            .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
+                    }
+                    Err(err) => {
+                        error!("Не удалось загрузить изображение по пути \"{filepath}\": {err}");
+                    }
+                }
             }
             Err(mpsc::TryRecvError::Disconnected) => {
                 warn!("Канал отключился до того как имя файла было принято");
