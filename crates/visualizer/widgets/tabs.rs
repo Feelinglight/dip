@@ -1,5 +1,6 @@
 use std::sync::mpsc;
 
+use egui_dock::DockState;
 use log::warn;
 
 use crate::widgets::image_hist::{ImageHist, ImageHistState};
@@ -29,6 +30,7 @@ impl ImageHistTab {
 }
 
 pub struct TabViewer {
+    tabs_count: usize,
     filepath_tx: mpsc::Sender<(
         egui_dock::SurfaceIndex,
         egui_dock::NodeIndex,
@@ -39,6 +41,7 @@ pub struct TabViewer {
 
 impl TabViewer {
     pub fn new(
+        tabs_count: usize,
         filepath_tx: mpsc::Sender<(
             egui_dock::SurfaceIndex,
             egui_dock::NodeIndex,
@@ -46,7 +49,10 @@ impl TabViewer {
             Vec<u8>,
         )>,
     ) -> Self {
-        Self { filepath_tx }
+        Self {
+            tabs_count,
+            filepath_tx,
+        }
     }
 }
 
@@ -93,8 +99,8 @@ impl egui_dock::TabViewer for TabViewer {
         std::thread::spawn(move || pollster::block_on(pick_file_task));
     }
 
-    fn on_close(&mut self, _tab: &mut Self::Tab) -> egui_dock::tab_viewer::OnCloseResponse {
-        egui_dock::tab_viewer::OnCloseResponse::Ignore
+    fn is_closeable(&self, _tab: &Self::Tab) -> bool {
+        self.tabs_count > 1
     }
 
     // fn on_rect_changed(&mut self, _tab: &mut Self::Tab) {}

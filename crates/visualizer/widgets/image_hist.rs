@@ -42,10 +42,8 @@ fn load_image(path: &Path) -> Result<GrayImage, LoadImageError> {
 }
 
 impl ImageHistState {
-    /// Инициализирует состояние
-    /// Загружает изображение по текущему установленному пути и строит его гистограмму
-    pub fn init(&mut self, egui_ctx: &Context) {
-        self.reload_image(egui_ctx);
+    pub fn image_path(&self) -> &String {
+        &self.image_path_edit_text
     }
 
     /// Загружает изображение из массива данных ``data``. Устанавливает путь к изображению в
@@ -93,16 +91,12 @@ impl ImageHistState {
         }
     }
 
-    /// Загружает изображение по текущему установленному пути и строит его гистограмму
+    /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
     pub fn reload_image(&mut self, ctx: &egui::Context) {
         let image = load_image(Path::new(&self.image_path_edit_text));
         self.zt_state.set_texture(ctx, image.as_ref(), false);
         self.image = image.ok();
         self.update_hist();
-    }
-
-    pub fn image_path(&self) -> &String {
-        &self.image_path_edit_text
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние

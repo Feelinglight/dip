@@ -44,7 +44,7 @@ impl DipPlotsApp {
             .unwrap_or_else(|| DockState::new(vec![ImageHistTab::default()]));
 
         for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
-            image_hist_tab.state.init(&cc.egui_ctx);
+            image_hist_tab.state.reload_image(&cc.egui_ctx);
         }
 
         let (filepath_tx, filepath_rx) = mpsc::channel();
@@ -77,11 +77,16 @@ impl eframe::App for DipPlotsApp {
             }
         });
 
+        let tabs_count = self.tree.iter_all_tabs().count();
+
         DockArea::new(&mut self.tree)
             .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
             .show_add_buttons(true)
             .show_tab_name_on_hover(true)
-            .show(ctx, &mut tabs::TabViewer::new(self.filepath_tx.clone()));
+            .show(
+                ctx,
+                &mut tabs::TabViewer::new(tabs_count, self.filepath_tx.clone()),
+            );
 
         match self.filepath_rx.try_recv() {
             Ok((surface_idx, node_idx, filepath, data)) => {
