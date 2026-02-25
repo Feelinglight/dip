@@ -1,6 +1,5 @@
 use std::sync::mpsc;
 
-use egui_dock::DockState;
 use log::warn;
 
 use crate::widgets::image_hist::{ImageHist, ImageHistState};
@@ -64,7 +63,16 @@ impl egui_dock::TabViewer for TabViewer {
     }
 
     fn title(&mut self, tab: &mut Self::Tab) -> egui::WidgetText {
-        tab.state.image_path().into()
+        let tab_image_path = tab.state.image_path();
+        if let Some((_, suffix)) = tab_image_path.rsplit_once('/')
+            && !suffix.is_empty()
+            && tab_image_path.starts_with('/')
+        {
+            suffix
+        } else {
+            "???"
+        }
+        .into()
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
@@ -84,12 +92,9 @@ impl egui_dock::TabViewer for TabViewer {
             let file = task.await;
             if let Some(file_handle) = file {
                 let data = file_handle.read().await;
-                if let Err(err) = tx.send((surface, node, file_handle.file_name(), data)) {
-                    warn!(
-                        "Ошибка при записи в канал (файл {}): {}",
-                        file_handle.file_name(),
-                        err
-                    );
+                let filepath = file_handle.path().to_string_lossy();
+                if let Err(err) = tx.send((surface, node, filepath.to_string(), data)) {
+                    warn!("Ошибка при записи в канал (файл {filepath}): {err}");
                 }
             }
         };

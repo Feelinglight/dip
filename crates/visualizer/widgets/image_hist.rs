@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use egui::{Context, Widget};
+use egui::Widget;
 use egui_plot::{Bar, BarChart, Legend, Plot};
 use image::{GrayImage, ImageReader};
 use intensity::graduation::Negative;
