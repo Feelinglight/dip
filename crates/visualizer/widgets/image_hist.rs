@@ -148,7 +148,10 @@ pub struct ImageHist<'a> {
 }
 
 impl<'a> ImageHist<'a> {
-    pub fn new(id_source: impl std::hash::Hash, state: &'a mut ImageHistState) -> ImageHist<'a> {
+    pub fn new(
+        id_source: impl std::hash::Hash + std::fmt::Debug,
+        state: &'a mut ImageHistState,
+    ) -> ImageHist<'a> {
         Self {
             id_source: egui::Id::new(id_source),
             state,
@@ -195,7 +198,7 @@ impl Widget for &mut ImageHist<'_> {
             ui.separator();
 
             if self.state.hist_enable {
-                egui::SidePanel::right(id).show_inside(ui, |ui| {
+                egui::Panel::right(id).show(ui, |ui| {
                     ui.vertical(|ui| {
                         self.state.show_histogram(id, ui);
                     });

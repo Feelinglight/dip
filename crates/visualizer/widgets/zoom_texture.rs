@@ -74,7 +74,7 @@ impl<'a> ZoomTexture<'a> {
         }
     }
 
-    /// Рисует на painter белый прямоугольник с текстом ошибки
+    // Рисует на painter белый прямоугольник с текстом ошибки
     fn show_error(painter: &Painter, text: &str, rect_size: Vec2) {
         painter.rect_filled(
             Rect {
@@ -118,7 +118,7 @@ impl Widget for ZoomTexture<'_> {
 
                 // Обработка зума колесиком
                 if response.hovered() {
-                    let scroll = ui.input(|i| i.raw_scroll_delta.y);
+                    let scroll = ui.input(|i| i.smooth_scroll_delta.y);
                     if scroll != 0.0 {
                         let zoom_factor = (scroll * ZOOM_SPEED).exp();
                         self.state.zoom = (self.state.zoom * zoom_factor).clamp(MIN_ZOOM, MAX_ZOOM);
@@ -148,8 +148,8 @@ impl Widget for ZoomTexture<'_> {
     }
 }
 
-// /// Рассчитывает зум, при котором картинка с размером image_size будет занимать ровно
-// /// available_size
+/// Рассчитывает зум, при котором картинка с размером `image_size` будет занимать ровно
+/// `available_size`
 fn fit_zoom(available_space: Vec2, image_size: Vec2) -> f32 {
     (available_space.x / image_size.x)
         .min(available_space.y / image_size.y)

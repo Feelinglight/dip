@@ -1,3 +1,4 @@
+use eframe::Frame;
 use log::{error, warn};
 use std::{path::Path, sync::mpsc};
 
@@ -13,18 +14,8 @@ use egui_dock::{DockArea, DockState};
 pub struct DipPlotsApp {
     config: AppConfig,
     tree: DockState<ImageHistTab>,
-    filepath_tx: mpsc::Sender<(
-        egui_dock::SurfaceIndex,
-        egui_dock::NodeIndex,
-        String,
-        Vec<u8>,
-    )>,
-    filepath_rx: mpsc::Receiver<(
-        egui_dock::SurfaceIndex,
-        egui_dock::NodeIndex,
-        String,
-        Vec<u8>,
-    )>,
+    filepath_tx: mpsc::Sender<(egui_dock::NodePath, String, Vec<u8>)>,
+    filepath_rx: mpsc::Receiver<(egui_dock::NodePath, String, Vec<u8>)>,
 }
 
 impl DipPlotsApp {
@@ -37,7 +28,6 @@ impl DipPlotsApp {
         };
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
-        catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::MOCHA);
 
         let mut tree: DockState<ImageHistTab> = serde_json::from_str(&config.tabs_state)
             .ok()
@@ -59,19 +49,19 @@ impl DipPlotsApp {
 }
 
 impl eframe::App for DipPlotsApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut Frame) {
+        egui::Panel::top("top_panel").show(ui, |ui| {
             egui::MenuBar::new().ui(ui, |ui| {
                 ui.menu_button("File", |ui| {
                     if ui.button("Quit").clicked() {
-                        ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                        ui.send_viewport_cmd(egui::ViewportCommand::Close);
                     }
                 });
                 ui.add_space(16.0);
             });
         });
 
-        egui::TopBottomPanel::top("my_top_bar").show(ctx, |ui| {
+        egui::Panel::top("my_top_bar").show(ui, |ui| {
             if ui.button("Test").clicked() {
                 println!("test");
             }
@@ -80,20 +70,19 @@ impl eframe::App for DipPlotsApp {
         let tabs_count = self.tree.iter_all_tabs().count();
 
         DockArea::new(&mut self.tree)
-            .style(egui_dock::Style::from_egui(ctx.style().as_ref()))
+            .style(egui_dock::Style::from_egui(ui.style().as_ref()))
             .show_add_buttons(true)
             .show_tab_name_on_hover(true)
-            .show(
-                ctx,
+            .show_inside(
+                ui,
                 &mut tabs::TabViewer::new(tabs_count, self.filepath_tx.clone()),
             );
 
         match self.filepath_rx.try_recv() {
-            Ok((surface_idx, node_idx, filepath, data)) => {
-                match ImageHistState::from_memory(ctx, Path::new(&filepath), &data) {
+            Ok((node_path, filepath, data)) => {
+                match ImageHistState::from_memory(ui, Path::new(&filepath), &data) {
                     Ok(image_hist_state) => {
-                        self.tree
-                            .set_focused_node_and_surface((surface_idx, node_idx));
+                        self.tree.set_focused_node_and_surface(node_path);
                         self.tree
                             .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
                     }

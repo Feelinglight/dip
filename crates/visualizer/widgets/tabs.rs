@@ -1,5 +1,6 @@
 use std::sync::mpsc;
 
+use egui_dock::NodePath;
 use log::warn;
 
 use crate::widgets::image_hist::{ImageHist, ImageHistState};
@@ -30,24 +31,11 @@ impl ImageHistTab {
 
 pub struct TabViewer {
     tabs_count: usize,
-    filepath_tx: mpsc::Sender<(
-        egui_dock::SurfaceIndex,
-        egui_dock::NodeIndex,
-        String,
-        Vec<u8>,
-    )>,
+    filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>,
 }
 
 impl TabViewer {
-    pub fn new(
-        tabs_count: usize,
-        filepath_tx: mpsc::Sender<(
-            egui_dock::SurfaceIndex,
-            egui_dock::NodeIndex,
-            String,
-            Vec<u8>,
-        )>,
-    ) -> Self {
+    pub fn new(tabs_count: usize, filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>) -> Self {
         Self {
             tabs_count,
             filepath_tx,
@@ -80,7 +68,7 @@ impl egui_dock::TabViewer for TabViewer {
         ui.add(&mut image_hist);
     }
 
-    fn on_add(&mut self, surface: egui_dock::SurfaceIndex, node: egui_dock::NodeIndex) {
+    fn on_add(&mut self, path: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
             .set_directory("/")
@@ -93,7 +81,7 @@ impl egui_dock::TabViewer for TabViewer {
             if let Some(file_handle) = file {
                 let data = file_handle.read().await;
                 let filepath = file_handle.path().to_string_lossy();
-                if let Err(err) = tx.send((surface, node, filepath.to_string(), data)) {
+                if let Err(err) = tx.send((path, filepath.to_string(), data)) {
                     warn!("Ошибка при записи в канал (файл {filepath}): {err}");
                 }
             }
