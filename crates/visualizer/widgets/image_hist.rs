@@ -7,7 +7,24 @@ use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 
 use crate::ZoomTexture;
+use crate::widgets::transforms_window::TransformsWindow;
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
+
+struct ImageHistRunState {
+    image: Option<GrayImage>,
+    show_image_controls: bool,
+    hist: HistArray,
+}
+
+impl Default for ImageHistRunState {
+    fn default() -> Self {
+        Self {
+            image: None,
+            show_image_controls: false,
+            hist: make_option_hist(None),
+        }
+    }
+}
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -15,11 +32,10 @@ pub struct ImageHistState {
     zt_state: ZoomTextureState,
     image_path_edit_text: String,
     hist_enable: bool,
+    dip_controls: TransformsWindow,
 
     #[serde(skip)]
-    image: Option<GrayImage>,
-    #[serde(skip)]
-    hist: HistArray,
+    run: ImageHistRunState,
 }
 
 impl Default for ImageHistState {
@@ -27,9 +43,9 @@ impl Default for ImageHistState {
         Self {
             zt_state: ZoomTextureState::default(),
             image_path_edit_text: String::new(),
-            image: None,
-            hist: make_option_hist(None),
             hist_enable: true,
+            dip_controls: TransformsWindow::default(),
+            run: ImageHistRunState::default(),
         }
     }
 }
@@ -65,9 +81,13 @@ impl ImageHistState {
                 let mut state = Self {
                     zt_state,
                     image_path_edit_text: String::from(image_path),
-                    image: Some(gray_image),
+                    run: ImageHistRunState {
+                        image: Some(gray_image),
+                        ..Default::default()
+                    },
                     ..Default::default()
                 };
+
                 state.update_hist();
                 Ok(state)
             } else {
@@ -95,25 +115,25 @@ impl ImageHistState {
     pub fn reload_image(&mut self, ctx: &egui::Context) {
         let image = load_image(Path::new(&self.image_path_edit_text));
         self.zt_state.set_texture(ctx, image.as_ref(), false);
-        self.image = image.ok();
+        self.run.image = image.ok();
         self.update_hist();
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
     /// Если изображение не загружено, то не делает ничего
     fn reset_zoom_texture(&mut self, ctx: &egui::Context) {
-        if let Some(img) = &self.image {
+        if let Some(img) = &self.run.image {
             self.zt_state.set_texture(ctx, Ok(img), false);
         }
     }
 
     /// Строит гистограмму для текущего изображения
     fn update_hist(&mut self) {
-        self.hist = make_option_hist(self.image.as_ref());
+        self.run.hist = make_option_hist(self.run.image.as_ref());
     }
 
     fn test_function(&mut self, ui: &mut egui::Ui) {
-        if let Some(img) = &mut self.image {
+        if let Some(img) = &mut self.run.image {
             img.negative_inplace();
             self.update_hist();
             self.reset_zoom_texture(ui.ctx());
@@ -124,9 +144,9 @@ impl ImageHistState {
         #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
         let chart = BarChart::new(
             "Гистограмма изображения",
-            (0..self.hist.len())
+            (0..self.run.hist.len())
                 .step_by(1)
-                .map(|x| Bar::new(x as f64, self.hist[x]))
+                .map(|x| Bar::new(x as f64, self.run.hist[x]))
                 .collect(),
         )
         .color(egui::Color32::LIGHT_BLUE);
