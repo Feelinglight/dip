@@ -209,6 +209,10 @@ impl Widget for &mut ImageHist<'_> {
                     self.state.test_function(ui);
                 }
 
+                if ui.button("Преобразовать").clicked() {
+                    self.state.run.show_image_controls = true;
+                }
+
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.checkbox(&mut self.state.hist_enable, "Показать гистограмму");
                 });
@@ -216,6 +220,8 @@ impl Widget for &mut ImageHist<'_> {
             });
 
             ui.separator();
+
+            self.show_controls_viewport(ui);
 
             if self.state.hist_enable {
                 egui::Panel::right(id).show(ui, |ui| {
@@ -239,5 +245,30 @@ impl Widget for &mut ImageHist<'_> {
 impl ImageHist<'_> {
     pub fn open_image_requested(&self) -> bool {
         self.open_image_requested
+    }
+
+    fn show_controls_viewport(&mut self, ui: &mut egui::Ui) {
+        if self.state.run.show_image_controls {
+            ui.ctx().show_viewport_immediate(
+                // TODO: сделать рандомный Id
+                egui::ViewportId::from_hash_of("immediate_viewport"),
+                egui::ViewportBuilder::default()
+                    .with_title("Immediate Viewport")
+                    .with_inner_size([700.0, 400.0]),
+                |ui, class| {
+                    if class == egui::ViewportClass::EmbeddedWindow {
+                        self.state.dip_controls.show(ui);
+                    } else {
+                        egui::CentralPanel::default().show(ui, |ui| {
+                            self.state.dip_controls.show(ui);
+
+                            if ui.input(|i| i.viewport().close_requested()) {
+                                self.state.run.show_image_controls = false;
+                            }
+                        });
+                    }
+                },
+            );
+        }
     }
 }
