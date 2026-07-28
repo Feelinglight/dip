@@ -4,6 +4,7 @@ use std::{path::Path, sync::mpsc};
 
 use crate::{
     config::AppConfig,
+    theme,
     widgets::{
         image_hist::ImageHistState,
         tabs::{self, ImageHistTab},
@@ -26,6 +27,7 @@ impl DipPlotsApp {
         } else {
             AppConfig::default()
         };
+        theme::apply_theme(&cc.egui_ctx, theme::ThemeId::CatppuccinMocha);
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 

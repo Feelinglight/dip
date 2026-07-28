@@ -3,6 +3,7 @@ use std::path::PathBuf;
 mod app;
 mod config;
 mod errors;
+mod theme;
 mod widgets;
 
 pub use app::DipPlotsApp;
