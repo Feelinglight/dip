@@ -1,4 +1,4 @@
-use egui::{self, Panel};
+use egui::{Panel, ScrollArea};
 use egui_ltreeview::TreeViewState;
 use uuid::Uuid;
 
@@ -38,18 +38,6 @@ impl TransformsWindow {
                 ui.separator();
 
                 show_applied_transforms(ui, &mut self.state.applied_transforms);
-
-                // ScrollArea::both()
-                // .scroll([
-                //     false,
-                //     self.settings.scroll_vertical,
-                // ])
-                // .scroll_bar_visibility(
-                //     egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
-                // )
-                // .show(ui, |ui| {
-                //     self.show_tree_view(ui);
-                // });
             });
 
         Panel::right(egui::Id::new("transforms"))
@@ -73,17 +61,38 @@ impl TransformsWindow {
         egui::CentralPanel::default()
             .frame(custom_frame)
             .show(ui, |ui| {
-                ui.set_min_width(300.);
                 ui.heading("Параметры преобразования");
 
                 ui.separator();
-                // if let Some(selected_control) =
-                // self.state.applied_transforms_tree_state.selected().first()
-                // {
-                // self.controls_data.find_mut(selected_control, &mut |node| {
-                // show_node_content(ui, node);
-                // });
-                // }
+
+                ScrollArea::both()
+                    .auto_shrink([false, false])
+                    .scroll([true, true])
+                    .scroll_bar_visibility(
+                        egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
+                    )
+                    .show(ui, |ui| {
+                        for (idx, transform) in
+                            &mut self.state.applied_transforms.iter_mut().enumerate()
+                        {
+                            ui.add_enabled_ui(transform.is_active(), |ui| {
+                                ui.heading(format!("{}. {}", idx + 1, transform.kind.name()));
+
+                                match &mut transform.parameters {
+                                    super::data::TransformParameters::Negative => {
+                                        ui.label("Параметры отсутствуют");
+                                    }
+                                    super::data::TransformParameters::GammaCorrection(gamma) => {
+                                        ui.horizontal(|ui| {
+                                            ui.label("Гамма:");
+                                            ui.add(egui::Slider::new(gamma, 1.0..=100.));
+                                        });
+                                    }
+                                }
+                            });
+                            ui.separator();
+                        }
+                    });
             });
     }
 }

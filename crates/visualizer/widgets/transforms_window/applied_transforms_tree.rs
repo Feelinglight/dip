@@ -1,7 +1,7 @@
-use egui::{Label, RichText};
+use egui::Label;
 use egui_ltreeview::{DirPosition, NodeBuilder};
 
-use crate::widgets::transforms_window::data::AppliedTransform;
+use crate::widgets::transforms_window::{common::make_rich_text, data::AppliedTransform};
 
 enum TransformContextActions {
     Enable(usize),
@@ -29,15 +29,7 @@ pub fn show_applied_transforms(
                 let node_id = idx + FIRST_TRANSFORM_ID;
                 let node = NodeBuilder::leaf(node_id)
                     .label_ui(|ui| {
-                        let color = if transform.is_active() {
-                            ui.visuals().strong_text_color()
-                        } else {
-                            ui.visuals().weak_text_color()
-                        };
-                        ui.add(
-                            Label::new(RichText::new(transform.kind.name()).color(color))
-                                .selectable(false),
-                        );
+                        show_transform_node(ui, node_id, transform);
                     })
                     .context_menu(|ui| {
                         show_context_menu(ui, node_id, &mut context_menu_actions);
@@ -68,6 +60,13 @@ pub fn show_applied_transforms(
     }
 
     response
+}
+
+fn show_transform_node(ui: &mut egui::Ui, node_id: usize, transform: &AppliedTransform) {
+    ui.add_enabled(
+        transform.is_active(),
+        Label::new(format!("{}. {}", node_id, transform.kind.name())).selectable(false),
+    );
 }
 
 fn show_context_menu(
