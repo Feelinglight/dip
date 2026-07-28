@@ -12,6 +12,7 @@ pub(crate) struct SyntaxPalette {
     pub punctuation: Color32,
 }
 
+#[allow(dead_code)]
 pub(crate) fn syntax_palette(theme_id: ThemeId) -> SyntaxPalette {
     match theme_id {
         ThemeId::EguiDark => builtin_palette(true),

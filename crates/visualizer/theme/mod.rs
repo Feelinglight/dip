@@ -6,10 +6,11 @@ mod syntax;
 
 use eframe::egui;
 
-pub use catalog::{theme_catalog, theme_definition};
+pub use catalog::theme_definition;
 pub use id::ThemeId;
-pub(crate) use syntax::{SyntaxPalette, syntax_palette};
+pub(crate) use syntax::SyntaxPalette;
 
+#[allow(dead_code)]
 pub fn resolve_theme(saved_theme: Option<ThemeId>, system_prefers_dark: Option<bool>) -> ThemeId {
     saved_theme
         .unwrap_or_else(|| ThemeId::from_legacy_dark_mode(system_prefers_dark.unwrap_or(true)))

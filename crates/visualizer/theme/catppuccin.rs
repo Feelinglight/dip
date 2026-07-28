@@ -353,7 +353,13 @@ mod tests {
         ];
 
         for (index, palette) in palettes.iter().enumerate() {
-            assert!(palettes[index + 1..].iter().all(|other| other != palette));
+            assert!(
+                palettes
+                    .get(index + 1..)
+                    .expect("Выход за границы вектора")
+                    .iter()
+                    .all(|other| other != palette)
+            );
         }
     }
 }

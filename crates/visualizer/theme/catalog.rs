@@ -40,6 +40,7 @@ const THEME_CATALOG: [ThemeDefinition; 6] = [
     },
 ];
 
+#[allow(dead_code)]
 pub fn theme_catalog() -> &'static [ThemeDefinition] {
     &THEME_CATALOG
 }
