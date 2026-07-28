@@ -80,9 +80,9 @@ impl egui_dock::TabViewer for TabViewer {
             let file = task.await;
             if let Some(file_handle) = file {
                 let data = file_handle.read().await;
-                let filepath = file_handle.path().to_string_lossy();
-                if let Err(err) = tx.send((path, filepath.to_string(), data)) {
-                    warn!("Ошибка при записи в канал (файл {filepath}): {err}");
+                let filename = file_handle.file_name();
+                if let Err(err) = tx.send((path, filename.clone(), data)) {
+                    warn!("Ошибка при записи в канал (файл {filename}): {err}");
                 }
             }
         };

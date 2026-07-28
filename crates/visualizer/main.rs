@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 mod app;
 mod config;
 mod errors;
@@ -12,6 +10,8 @@ pub use widgets::zoom_texture::ZoomTexture;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {
+    use std::path::PathBuf;
+
     env_logger::init(); // Log to stderr (if you run with `RUST_LOG=debug`).
 
     let native_options = eframe::NativeOptions {
