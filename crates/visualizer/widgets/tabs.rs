@@ -2,6 +2,7 @@ use std::sync::mpsc;
 
 use egui_dock::NodePath;
 use log::warn;
+use rfd::FileHandle;
 
 use crate::widgets::image_hist::{ImageHist, ImageHistState};
 
@@ -58,7 +59,7 @@ impl egui_dock::TabViewer for TabViewer {
         {
             suffix
         } else {
-            "???"
+            tab_image_path
         }
         .into()
     }
@@ -66,12 +67,26 @@ impl egui_dock::TabViewer for TabViewer {
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Self::Tab) {
         let mut image_hist = ImageHist::new(tab.id, &mut tab.state);
         ui.add(&mut image_hist);
+
+        if image_hist.open_image_requested() {
+            self.add_image_tab(NodePath::right_node(NodePath::MAIN_ROOT));
+        }
     }
 
     fn on_add(&mut self, path: NodePath) {
+        self.add_image_tab(path);
+    }
+
+    fn is_closeable(&self, _tab: &Self::Tab) -> bool {
+        self.tabs_count > 1
+    }
+}
+
+impl TabViewer {
+    fn add_image_tab(&mut self, path: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
-            .set_directory("/")
+            .set_directory("/home/dmitry/data/develop/cv/plots/")
             .pick_file();
 
         let tx = self.filepath_tx.clone();
@@ -80,7 +95,7 @@ impl egui_dock::TabViewer for TabViewer {
             let file = task.await;
             if let Some(file_handle) = file {
                 let data = file_handle.read().await;
-                let filename = file_handle.file_name();
+                let filename = TabViewer::filename(&file_handle);
                 if let Err(err) = tx.send((path, filename.clone(), data)) {
                     warn!("Ошибка при записи в канал (файл {filename}): {err}");
                 }
@@ -92,9 +107,13 @@ impl egui_dock::TabViewer for TabViewer {
         std::thread::spawn(move || pollster::block_on(pick_file_task));
     }
 
-    fn is_closeable(&self, _tab: &Self::Tab) -> bool {
-        self.tabs_count > 1
+    // В wasm у FileHandle нет метода path.
+    // Но этот метод полезен для повторной загрузки изображения (reload). Если сохранять только
+    // имя, то повторная загрузка будет работать только по относительному пути.
+    fn filename(file_handle: &FileHandle) -> String {
+        #[cfg(target_arch = "wasm32")]
+        return file_handle.file_name();
+        #[cfg(not(target_arch = "wasm32"))]
+        return file_handle.path().to_string_lossy().to_string();
     }
-
-    // fn on_rect_changed(&mut self, _tab: &mut Self::Tab) {}
 }

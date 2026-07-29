@@ -32,7 +32,7 @@ pub struct ImageHistState {
     zt_state: ZoomTextureState,
     image_path_edit_text: String,
     hist_enable: bool,
-    dip_controls: TransformsWindow,
+    transforms_window: TransformsWindow,
 
     #[serde(skip)]
     run: ImageHistRunState,
@@ -44,7 +44,7 @@ impl Default for ImageHistState {
             zt_state: ZoomTextureState::default(),
             image_path_edit_text: String::new(),
             hist_enable: true,
-            dip_controls: TransformsWindow::default(),
+            transforms_window: TransformsWindow::default(),
             run: ImageHistRunState::default(),
         }
     }
@@ -243,8 +243,10 @@ impl Widget for &mut ImageHist<'_> {
 }
 
 impl ImageHist<'_> {
-    pub fn open_image_requested(&self) -> bool {
-        self.open_image_requested
+    pub fn open_image_requested(&mut self) -> bool {
+        let requested = self.open_image_requested;
+        self.open_image_requested = false;
+        requested
     }
 
     fn show_controls_viewport(&mut self, ui: &mut egui::Ui) {
@@ -256,11 +258,12 @@ impl ImageHist<'_> {
                     .with_title("Immediate Viewport")
                     .with_inner_size([700.0, 400.0]),
                 |ui, class| {
+                    self.state.transforms_window.show(ui);
                     if class == egui::ViewportClass::EmbeddedWindow {
-                        self.state.dip_controls.show(ui);
+                        self.state.transforms_window.show(ui);
                     } else {
                         egui::CentralPanel::default().show(ui, |ui| {
-                            self.state.dip_controls.show(ui);
+                            self.state.transforms_window.show(ui);
 
                             if ui.input(|i| i.viewport().close_requested()) {
                                 self.state.run.show_image_controls = false;
