@@ -77,7 +77,11 @@ impl eframe::App for DipPlotsApp {
             .show_tab_name_on_hover(true)
             .show_inside(
                 ui,
-                &mut tabs::TabViewer::new(tabs_count, self.filepath_tx.clone()),
+                &mut tabs::TabViewer::new(
+                    tabs_count,
+                    &self.config.last_image_folder_path,
+                    self.filepath_tx.clone(),
+                ),
             );
 
         match self.filepath_rx.try_recv() {
@@ -92,6 +96,7 @@ impl eframe::App for DipPlotsApp {
                         error!("Не удалось загрузить изображение по пути \"{filepath}\": {err}");
                     }
                 }
+                self.config.last_image_folder_path = filepath;
             }
             Err(mpsc::TryRecvError::Disconnected) => {
                 warn!("Канал отключился до того как имя файла было принято");

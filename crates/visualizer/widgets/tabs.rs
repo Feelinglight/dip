@@ -30,21 +30,27 @@ impl ImageHistTab {
     }
 }
 
-pub struct TabViewer {
+pub struct TabViewer<'a> {
     tabs_count: usize,
+    default_folder: &'a String,
     filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>,
 }
 
-impl TabViewer {
-    pub fn new(tabs_count: usize, filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>) -> Self {
+impl<'a> TabViewer<'a> {
+    pub fn new(
+        tabs_count: usize,
+        default_folder: &'a String,
+        filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>,
+    ) -> Self {
         Self {
             tabs_count,
+            default_folder,
             filepath_tx,
         }
     }
 }
 
-impl egui_dock::TabViewer for TabViewer {
+impl egui_dock::TabViewer for TabViewer<'_> {
     type Tab = ImageHistTab;
 
     fn id(&mut self, tab: &mut Self::Tab) -> egui::Id {
@@ -82,11 +88,11 @@ impl egui_dock::TabViewer for TabViewer {
     }
 }
 
-impl TabViewer {
+impl TabViewer<'_> {
     fn add_image_tab(&mut self, path: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
-            .set_directory("/home/dmitry/data/develop/cv/plots/")
+            .set_directory(self.default_folder)
             .pick_file();
 
         let tx = self.filepath_tx.clone();
