@@ -34,7 +34,6 @@ pub fn show_available_transforms(
             });
         }
     }
-
     response
 }
 

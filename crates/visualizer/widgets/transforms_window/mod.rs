@@ -3,4 +3,5 @@ mod available_transforms_tree;
 mod data;
 mod window;
 
-pub use window::TransformsWindow;
+pub use window::TransformsPanel;
+pub use window::TransformsState;

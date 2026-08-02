@@ -7,7 +7,7 @@ use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 
 use crate::ZoomTexture;
-use crate::widgets::transforms_window::TransformsWindow;
+use crate::widgets::transforms_window::{TransformsPanel, TransformsState};
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
 
 struct ImageHistRunState {
@@ -30,9 +30,9 @@ impl Default for ImageHistRunState {
 #[serde(default)]
 pub struct ImageHistState {
     zt_state: ZoomTextureState,
+    transforms: TransformsState,
     image_path_edit_text: String,
     hist_enable: bool,
-    transforms_window: TransformsWindow,
 
     #[serde(skip)]
     run: ImageHistRunState,
@@ -42,9 +42,9 @@ impl Default for ImageHistState {
     fn default() -> Self {
         Self {
             zt_state: ZoomTextureState::default(),
+            transforms: TransformsState::default(),
             image_path_edit_text: String::new(),
             hist_enable: true,
-            transforms_window: TransformsWindow::default(),
             run: ImageHistRunState::default(),
         }
     }
@@ -140,7 +140,7 @@ impl ImageHistState {
         }
     }
 
-    fn show_histogram(&self, id: egui::Id, ui: &mut egui::Ui) {
+    fn show_histogram(&self, ui: &mut egui::Ui) {
         #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
         let chart = BarChart::new(
             "Гистограмма изображения",
@@ -151,7 +151,7 @@ impl ImageHistState {
         )
         .color(egui::Color32::LIGHT_BLUE);
 
-        Plot::new(id)
+        Plot::new("ImageHist::histogram")
             .legend(Legend::default())
             .clamp_grid(true)
             .allow_zoom(egui::Vec2b::new(true, true))
@@ -162,18 +162,15 @@ impl ImageHistState {
 }
 
 pub struct ImageHist<'a> {
-    id_source: egui::Id,
+    id_salt: egui::IdSalt,
     state: &'a mut ImageHistState,
     open_image_requested: bool,
 }
 
 impl<'a> ImageHist<'a> {
-    pub fn new(
-        id_source: impl std::hash::Hash + std::fmt::Debug,
-        state: &'a mut ImageHistState,
-    ) -> ImageHist<'a> {
+    pub fn new(id_salt: impl egui::AsIdSalt, state: &'a mut ImageHistState) -> ImageHist<'a> {
         Self {
-            id_source: egui::Id::new(id_source),
+            id_salt: egui::IdSalt::new(id_salt),
             state,
             open_image_requested: false,
         }
@@ -182,61 +179,63 @@ impl<'a> ImageHist<'a> {
 
 impl Widget for &mut ImageHist<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let id = ui.make_persistent_id(self.id_source);
+        ui.push_id(self.id_salt, |ui| {
+            ui.vertical(|ui| {
+                let toolbar_response = ui.horizontal_wrapped(|ui| {
+                    let open_file_button =
+                        egui::Button::image(egui::include_image!("../icons/open-file.png"));
+                    let resp = ui.add(open_file_button);
 
-        ui.vertical(|ui| {
-            let open_image_button_resp = ui.horizontal(|ui| {
-                let open_file_button =
-                    egui::Button::image(egui::include_image!("../icons/open-file.png"));
-                let resp = ui.add(open_file_button);
+                    let load_image_button =
+                        egui::Button::image(egui::include_image!("../icons/load-image.png"));
+                    if ui.add(load_image_button).clicked() {
+                        self.state.zt_state.reset_parameters();
+                        self.state.reload_image(ui.ctx());
+                    }
 
-                let load_image_button =
-                    egui::Button::image(egui::include_image!("../icons/load-image.png"));
-                if ui.add(load_image_button).clicked() {
-                    self.state.zt_state.reset_parameters();
-                    self.state.reload_image(ui.ctx());
-                }
+                    ui.text_edit_singleline(&mut self.state.image_path_edit_text);
 
-                ui.text_edit_singleline(&mut self.state.image_path_edit_text);
+                    let clear_image_button =
+                        egui::Button::image(egui::include_image!("../icons/clear-image.png"));
+                    if ui.add(clear_image_button).clicked() {
+                        self.state.zt_state.reset_parameters();
+                    }
 
-                let clear_image_button =
-                    egui::Button::image(egui::include_image!("../icons/clear-image.png"));
-                if ui.add(clear_image_button).clicked() {
-                    self.state.zt_state.reset_parameters();
-                }
+                    if ui.button("Тест").clicked() {
+                        self.state.test_function(ui);
+                    }
 
-                if ui.button("Тест").clicked() {
-                    self.state.test_function(ui);
-                }
+                    if ui.button("Преобразовать").clicked() {
+                        self.state.run.show_image_controls = true;
+                    }
 
-                if ui.button("Преобразовать").clicked() {
-                    self.state.run.show_image_controls = true;
-                }
-
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    ui.checkbox(&mut self.state.hist_enable, "Показать гистограмму");
-                });
-                resp
-            });
-
-            ui.separator();
-
-            self.show_controls_viewport(ui);
-
-            if self.state.hist_enable {
-                egui::Panel::right(id).show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        self.state.show_histogram(id, ui);
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.checkbox(&mut self.state.hist_enable, "Показать гистограмму");
                     });
+                    resp
                 });
-            }
 
-            let zoom_texture = ZoomTexture::new(&mut self.state.zt_state, ui.available_size());
-            let zt_response = ui.add(zoom_texture);
-            if open_image_button_resp.inner.clicked() || zt_response.double_clicked() {
-                self.open_image_requested = true;
-            }
-            zt_response
+                ui.separator();
+
+                self.show_controls_viewport(ui);
+
+                let id = ui.make_persistent_id("ImageHist-right_panel");
+                if self.state.hist_enable {
+                    egui::Panel::right(id).show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            self.state.show_histogram(ui);
+                        });
+                    });
+                }
+
+                let zoom_texture = ZoomTexture::new(&mut self.state.zt_state, ui.available_size());
+                let zt_response = ui.add(zoom_texture);
+                if toolbar_response.inner.clicked() || zt_response.double_clicked() {
+                    self.open_image_requested = true;
+                }
+                zt_response
+            })
+            .inner
         })
         .inner
     }
@@ -251,20 +250,22 @@ impl ImageHist<'_> {
 
     fn show_controls_viewport(&mut self, ui: &mut egui::Ui) {
         if self.state.run.show_image_controls {
+            let transforms_viewport_id = ui.make_persistent_id("transforms_viewport");
             ui.ctx().show_viewport_immediate(
-                // TODO: сделать рандомный Id
-                egui::ViewportId::from_hash_of("immediate_viewport"),
+                egui::ViewportId::from_hash_of(transforms_viewport_id),
                 egui::ViewportBuilder::default()
-                    .with_title("Immediate Viewport")
-                    .with_inner_size([700.0, 400.0]),
+                    .with_title(format!(
+                        "Преобразования для {}",
+                        self.state.image_path_edit_text
+                    ))
+                    .with_inner_size([800.0, 600.0]),
                 |ui, class| {
-                    self.state.transforms_window.show(ui);
+                    let transforms_panel = TransformsPanel::new(&mut self.state.transforms);
+                    ui.add(transforms_panel);
+
                     if class == egui::ViewportClass::EmbeddedWindow {
-                        self.state.transforms_window.show(ui);
                     } else {
                         egui::CentralPanel::default().show(ui, |ui| {
-                            self.state.transforms_window.show(ui);
-
                             if ui.input(|i| i.viewport().close_requested()) {
                                 self.state.run.show_image_controls = false;
                             }
