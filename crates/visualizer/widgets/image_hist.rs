@@ -7,7 +7,7 @@ use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 
 use crate::ZoomTexture;
-use crate::widgets::transforms_window::{TransformsPanel, TransformsState};
+use crate::widgets::transforms_panel::{TransformsPanel, TransformsState};
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
 
 struct ImageHistRunState {

@@ -2,7 +2,7 @@ use egui::{Panel, ScrollArea, Widget};
 use egui_ltreeview::TreeViewState;
 use uuid::Uuid;
 
-use crate::widgets::transforms_window::{
+use crate::widgets::transforms_panel::{
     applied_transforms_tree::show_applied_transforms,
     available_transforms_tree::show_available_transforms, data::AppliedTransform,
 };

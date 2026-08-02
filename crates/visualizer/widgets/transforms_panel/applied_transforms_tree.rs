@@ -1,7 +1,7 @@
 use egui::Label;
 use egui_ltreeview::{DirPosition, NodeBuilder};
 
-use crate::widgets::transforms_window::data::AppliedTransform;
+use crate::widgets::transforms_panel::data::AppliedTransform;
 
 enum TransformContextActions {
     Enable(usize),
