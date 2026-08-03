@@ -20,7 +20,8 @@ pub fn show_applied_transforms(
 ) -> egui::Response {
     let mut context_menu_actions = Vec::<TransformContextActions>::new();
 
-    let (response, actions) = egui_ltreeview::TreeView::new(egui::Id::new("tree view cur"))
+    let id = ui.make_persistent_id("applied_transforms_tree");
+    let (response, actions) = egui_ltreeview::TreeView::new(id)
         .allow_multi_selection(false)
         .allow_drag_and_drop(true)
         .show(ui, |builder| {

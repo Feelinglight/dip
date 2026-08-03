@@ -14,7 +14,8 @@ pub fn show_available_transforms(
     ui: &mut egui::Ui,
     mut on_activate: impl FnMut(TransformKind),
 ) -> egui::Response {
-    let (response, actions) = egui_ltreeview::TreeView::new(egui::Id::new("tree view"))
+    let id = ui.make_persistent_id("available_transforms_tree");
+    let (response, actions) = egui_ltreeview::TreeView::new(id)
         .min_width(100.)
         .allow_multi_selection(false)
         .allow_drag_and_drop(false)
