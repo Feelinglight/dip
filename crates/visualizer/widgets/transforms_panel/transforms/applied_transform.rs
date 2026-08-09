@@ -1,5 +1,7 @@
 use uuid::Uuid;
 
+use super::GammaCorrectionData;
+
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 pub enum TransformKind {
     Negative,
@@ -25,12 +27,12 @@ impl TransformKind {
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
 pub enum TransformParameters {
     Negative,
-    GammaCorrection(f64),
+    GammaCorrection(GammaCorrectionData),
 }
 
 impl TransformParameters {
     pub fn gamma_correction() -> Self {
-        TransformParameters::GammaCorrection(1.)
+        TransformParameters::GammaCorrection(GammaCorrectionData::default())
     }
 }
 
@@ -66,5 +68,14 @@ impl AppliedTransform {
 
     pub fn toggle_active(&mut self) {
         self.active = !self.active;
+    }
+
+    pub fn restore_state(&mut self) {
+        match &mut self.parameters {
+            TransformParameters::GammaCorrection(data) => {
+                data.restore();
+            }
+            TransformParameters::Negative => {}
+        }
     }
 }

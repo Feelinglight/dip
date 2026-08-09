@@ -1,6 +1,6 @@
 use egui_ltreeview::TreeViewBuilder;
 
-use crate::widgets::transforms_panel::data::TransformKind;
+use super::transforms::TransformKind;
 
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 enum TransformNodeId {

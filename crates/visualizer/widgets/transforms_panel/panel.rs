@@ -1,31 +1,28 @@
 use egui::{Panel, ScrollArea, Widget};
 
-use crate::widgets::transforms_panel::{
-    applied_transforms_tree::show_applied_transforms,
-    available_transforms_tree::show_available_transforms, data::AppliedTransform,
-};
+use super::transforms::show_gamma_controls;
 
-#[derive(serde::Deserialize, serde::Serialize, Default)]
-pub struct TransformsState {
-    applied_transforms: Vec<AppliedTransform>,
-}
+use super::applied_transforms_tree::show_applied_transforms;
+use super::available_transforms_tree::show_available_transforms;
+use super::transforms::AppliedTransform;
+use super::transforms::TransformParameters;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
-    state: &'a mut TransformsState,
+    transforms: &'a mut Vec<AppliedTransform>,
 }
 
 impl<'a> TransformsPanel<'a> {
-    pub fn new(state: &'a mut TransformsState) -> Self {
+    pub fn new(transforms: &'a mut Vec<AppliedTransform>) -> Self {
         Self {
             id_salt: None,
-            state,
+            transforms,
         }
     }
 }
 
 impl Widget for TransformsPanel<'_> {
-    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
+    fn ui(mut self, ui: &mut egui::Ui) -> egui::Response {
         let id = ui.make_persistent_id(
             self.id_salt
                 .unwrap_or_else(|| egui::IdSalt::new("transforms_panel")),
@@ -44,13 +41,13 @@ impl Widget for TransformsPanel<'_> {
                             "../../icons/clear-image.png"
                         ));
                         if ui.add(clear_image_button).clicked() {
-                            self.state.applied_transforms.clear();
+                            self.transforms.clear();
                         }
                     });
 
                     ui.separator();
 
-                    show_applied_transforms(ui, &mut self.state.applied_transforms)
+                    show_applied_transforms(ui, self.transforms)
                 })
                 .response;
 
@@ -63,9 +60,7 @@ impl Widget for TransformsPanel<'_> {
                     ui.separator();
 
                     show_available_transforms(ui, |transform_kind| {
-                        self.state
-                            .applied_transforms
-                            .push(AppliedTransform::new(transform_kind));
+                        self.transforms.push(AppliedTransform::new(transform_kind));
                     })
                 })
                 .response;
@@ -89,28 +84,7 @@ impl Widget for TransformsPanel<'_> {
                             egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded,
                         )
                         .show(ui, |ui| {
-                            for (idx, transform) in
-                                &mut self.state.applied_transforms.iter_mut().enumerate()
-                            {
-                                ui.add_enabled_ui(transform.is_active(), |ui| {
-                                    ui.heading(format!("{}. {}", idx + 1, transform.kind.name()));
-
-                                    match &mut transform.parameters {
-                                        super::data::TransformParameters::Negative => {
-                                            ui.label("Параметры отсутствуют");
-                                        }
-                                        super::data::TransformParameters::GammaCorrection(
-                                            gamma,
-                                        ) => {
-                                            ui.horizontal(|ui| {
-                                                ui.label("Гамма:");
-                                                ui.add(egui::Slider::new(gamma, 1.0..=100.));
-                                            });
-                                        }
-                                    }
-                                });
-                                ui.separator();
-                            }
+                            self.show_applied_transforms(ui);
                         })
                 })
                 .response;
@@ -118,5 +92,27 @@ impl Widget for TransformsPanel<'_> {
             left_response | right_response | central_response
         })
         .inner
+    }
+}
+
+impl TransformsPanel<'_> {
+    fn show_applied_transforms(&mut self, ui: &mut egui::Ui) {
+        for (idx, transform) in self.transforms.iter_mut().enumerate() {
+            ui.push_id(transform.id, |ui| {
+                ui.add_enabled_ui(transform.is_active(), |ui| {
+                    ui.heading(format!("{}. {}", idx + 1, transform.kind.name()));
+
+                    match &mut transform.parameters {
+                        TransformParameters::Negative => {
+                            ui.label("Параметры отсутствуют");
+                        }
+                        TransformParameters::GammaCorrection(gamma_data) => {
+                            show_gamma_controls(ui, gamma_data);
+                        }
+                    }
+                });
+                ui.separator();
+            });
+        }
     }
 }

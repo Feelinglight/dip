@@ -36,7 +36,7 @@ impl DipPlotsApp {
             .unwrap_or_else(|| DockState::new(vec![ImageHistTab::default()]));
 
         for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
-            image_hist_tab.state.reload_image(&cc.egui_ctx);
+            image_hist_tab.state.restore(&cc.egui_ctx);
         }
 
         let (filepath_tx, filepath_rx) = mpsc::channel();

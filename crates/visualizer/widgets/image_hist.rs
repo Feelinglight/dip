@@ -1,13 +1,13 @@
 use std::path::Path;
 
-use egui::Widget;
+use egui::{Vec2, Widget};
 use egui_plot::{Bar, BarChart, Legend, Plot};
 use image::{GrayImage, ImageReader};
 use intensity::graduation::Negative;
 use intensity::hist::{HistArray, make_option_hist};
 
 use crate::ZoomTexture;
-use crate::widgets::transforms_panel::{TransformsPanel, TransformsState};
+use crate::widgets::transforms_panel::{AppliedTransform, TransformsPanel};
 use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
 
 struct ImageHistRunState {
@@ -30,9 +30,12 @@ impl Default for ImageHistRunState {
 #[serde(default)]
 pub struct ImageHistState {
     zt_state: ZoomTextureState,
-    transforms: TransformsState,
+    transforms: Vec<AppliedTransform>,
     image_path_edit_text: String,
     hist_enable: bool,
+
+    transforms_viewport_size: Option<egui::Vec2>,
+    transforms_viewport_pos: Option<egui::Pos2>,
 
     #[serde(skip)]
     run: ImageHistRunState,
@@ -42,9 +45,11 @@ impl Default for ImageHistState {
     fn default() -> Self {
         Self {
             zt_state: ZoomTextureState::default(),
-            transforms: TransformsState::default(),
+            transforms: Vec::default(),
             image_path_edit_text: String::new(),
             hist_enable: true,
+            transforms_viewport_size: None,
+            transforms_viewport_pos: None,
             run: ImageHistRunState::default(),
         }
     }
@@ -58,6 +63,13 @@ fn load_image(path: &Path) -> Result<GrayImage, LoadImageError> {
 }
 
 impl ImageHistState {
+    pub fn restore(&mut self, ctx: &egui::Context) {
+        self.reload_image(ctx);
+        for transform in &mut self.transforms {
+            transform.restore_state();
+        }
+    }
+
     pub fn image_path(&self) -> &String {
         &self.image_path_edit_text
     }
@@ -112,7 +124,7 @@ impl ImageHistState {
     }
 
     /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
-    pub fn reload_image(&mut self, ctx: &egui::Context) {
+    fn reload_image(&mut self, ctx: &egui::Context) {
         let image = load_image(Path::new(&self.image_path_edit_text));
         self.zt_state.set_texture(ctx, image.as_ref(), false);
         self.run.image = image.ok();
@@ -217,7 +229,7 @@ impl Widget for &mut ImageHist<'_> {
 
                 ui.separator();
 
-                self.show_controls_viewport(ui);
+                self.show_transforms_viewport(ui);
 
                 let id = ui.make_persistent_id("ImageHist-right_panel");
                 if self.state.hist_enable {
@@ -248,18 +260,37 @@ impl ImageHist<'_> {
         requested
     }
 
-    fn show_controls_viewport(&mut self, ui: &mut egui::Ui) {
+    fn show_transforms_viewport(&mut self, ui: &mut egui::Ui) {
         if self.state.run.show_image_controls {
+            let mut viewport_builder = egui::ViewportBuilder::default()
+                .with_title(format!(
+                    "Преобразования для {}",
+                    self.state.image_path_edit_text
+                ))
+                .with_inner_size(
+                    self.state
+                        .transforms_viewport_size
+                        .unwrap_or(Vec2::new(800., 600.)),
+                );
+
+            // NOTE: Не работает на Wayland
+            if let Some(viewport_pos) = self.state.transforms_viewport_pos {
+                viewport_builder = viewport_builder.with_position(viewport_pos);
+            }
+
             let transforms_viewport_id = ui.make_persistent_id("transforms_viewport");
             ui.ctx().show_viewport_immediate(
                 egui::ViewportId::from_hash_of(transforms_viewport_id),
-                egui::ViewportBuilder::default()
-                    .with_title(format!(
-                        "Преобразования для {}",
-                        self.state.image_path_edit_text
-                    ))
-                    .with_inner_size([800.0, 600.0]),
+                viewport_builder,
                 |ui, class| {
+                    // NOTE: Не работает на Wayland
+                    if let Some(inner_rect) = ui.input(|i| i.viewport().inner_rect) {
+                        self.state.transforms_viewport_size = Some(inner_rect.size());
+                    }
+                    if let Some(outer_rect) = ui.input(|i| i.viewport().outer_rect) {
+                        self.state.transforms_viewport_pos = Some(outer_rect.min);
+                    }
+
                     let transforms_panel = TransformsPanel::new(&mut self.state.transforms);
                     ui.add(transforms_panel);
 
