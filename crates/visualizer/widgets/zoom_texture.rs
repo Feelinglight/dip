@@ -30,29 +30,20 @@ impl Default for ZoomTextureState {
 }
 
 impl ZoomTextureState {
-    /// Загружает картинку по заданному пути
+    /// Устанавливает текстуру для отображения
     /// Если установлен флаг ``reset_params``, то сбрасывает параметры отображения картинки,
     /// такие как zoom и pan
-    pub fn set_texture(
-        &mut self,
-        ctx: &Context,
-        image: Result<&GrayImage, &LoadImageError>,
-        reset_params: bool,
-    ) {
-        self.texture = match image {
-            Ok(img) => {
-                let colored_image = ColorImage::from_gray(
-                    [img.width() as usize, img.height() as usize],
-                    img.as_flat_samples().as_slice(),
-                );
-                Ok(ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR))
-            }
-            Err(load_error) => Err(load_error.to_string()),
-        };
-
+    pub fn set_texture(&mut self, texture: TextureHandle, reset_params: bool) {
+        self.texture = Ok(texture);
         if reset_params {
             self.reset_parameters();
         }
+    }
+
+    /// Устанавливает ошибку
+    /// Текст ошибки будет отрисован как изображение
+    pub fn set_error(&mut self, error: String) {
+        self.texture = Err(error);
     }
 
     pub fn reset_parameters(&mut self) {

@@ -1,3 +1,7 @@
+use std::ops::{Deref, DerefMut};
+
+use image::{ImageBuffer, Pixel};
+use intensity::graduation::Negative;
 use uuid::Uuid;
 
 use super::GammaCorrectionData;
@@ -77,5 +81,20 @@ impl AppliedTransform {
             }
             TransformParameters::Negative => {}
         }
+    }
+
+    pub fn apply<P, Container>(&self, image_buffer: &mut ImageBuffer<P, Container>)
+    where
+        P: Pixel,
+        Container: Deref<Target = [P::Subpixel]> + DerefMut,
+    {
+        match &self.parameters {
+            TransformParameters::GammaCorrection(data) => {
+                //
+            }
+            TransformParameters::Negative => {
+                image_buffer.negative_inplace();
+            }
+        };
     }
 }

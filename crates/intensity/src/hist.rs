@@ -14,10 +14,6 @@ pub fn make_hist(image: &GrayImage) -> HistArray {
     hist
 }
 
-pub fn make_option_hist(image: Option<&GrayImage>) -> HistArray {
-    if let Some(img) = &image {
-        make_hist(img)
-    } else {
-        [0.; HIST_ARRAY_SIZE]
-    }
+pub fn empty_hist() -> HistArray {
+    [0.; HIST_ARRAY_SIZE]
 }

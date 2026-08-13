@@ -2,6 +2,10 @@ use egui_plot::{Legend, Line, Plot, PlotPoints};
 
 use super::data::GammaCorrectionData;
 
+const PLOT_WIDTH: f32 = 200.;
+const PLOT_HEIGHT: f32 = 200.;
+const MIN_SLIDER_WIDTH: f32 = 50.;
+
 fn slider_internal_to_gamma(internal: f64, gamma_max: f64) -> f64 {
     if internal <= 1. {
         internal
@@ -18,16 +22,16 @@ fn gamma_to_slider_internal(gamma: f64, gamma_max: f64) -> f64 {
     }
 }
 
-pub fn show_gamma_controls(ui: &mut egui::Ui, gamma_data: &mut GammaCorrectionData) {
+pub fn show_gamma_controls(
+    ui: &mut egui::Ui,
+    gamma_data: &mut GammaCorrectionData,
+    changed: &mut bool,
+) {
     let mut gamma = gamma_data.gamma();
     let mut constant = gamma_data.constant();
 
-    let plot_width = 200.;
-    let plot_height = 200.;
-
     let remaining_space = ui.available_width();
-    let min_slider_width = 50_f32;
-    ui.spacing_mut().slider_width = min_slider_width.max(remaining_space - plot_width - 80.);
+    ui.spacing_mut().slider_width = MIN_SLIDER_WIDTH.max(remaining_space - PLOT_WIDTH - 80.);
 
     let gamma_max = 99.;
     // Значение gamma внутри слайдера
@@ -46,6 +50,7 @@ pub fn show_gamma_controls(ui: &mut egui::Ui, gamma_data: &mut GammaCorrectionDa
             {
                 gamma = slider_internal_to_gamma(internal_gamma, gamma_max);
                 gamma_data.set_parameters(constant, gamma);
+                *changed = true;
             }
 
             ui.label("Константа:");
@@ -54,17 +59,19 @@ pub fn show_gamma_controls(ui: &mut egui::Ui, gamma_data: &mut GammaCorrectionDa
                 .changed()
             {
                 gamma_data.set_parameters(constant, gamma);
+                *changed = true;
             }
 
             if ui.button("Сбросить").clicked() {
                 gamma_data.reset_parameters();
+                *changed = true;
             }
         });
 
         Plot::new("TransformsPanel::GammaCorrectionPlot")
             .legend(Legend::default())
-            .width(plot_width)
-            .height(plot_height)
+            .width(PLOT_WIDTH)
+            .height(PLOT_HEIGHT)
             .clamp_grid(true)
             .allow_zoom(egui::Vec2b::new(false, false))
             .allow_drag(egui::Vec2b::new(false, false))

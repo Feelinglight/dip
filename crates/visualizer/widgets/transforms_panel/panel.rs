@@ -1,3 +1,4 @@
+use egui::Response;
 use egui::{Panel, ScrollArea, Widget};
 
 use super::transforms::show_gamma_controls;
@@ -10,6 +11,7 @@ use super::transforms::TransformParameters;
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
     transforms: &'a mut Vec<AppliedTransform>,
+    changed: bool,
 }
 
 impl<'a> TransformsPanel<'a> {
@@ -17,6 +19,7 @@ impl<'a> TransformsPanel<'a> {
         Self {
             id_salt: None,
             transforms,
+            changed: false,
         }
     }
 }
@@ -42,12 +45,13 @@ impl Widget for TransformsPanel<'_> {
                         ));
                         if ui.add(clear_image_button).clicked() {
                             self.transforms.clear();
+                            self.changed = true;
                         }
                     });
 
                     ui.separator();
 
-                    show_applied_transforms(ui, self.transforms)
+                    show_applied_transforms(ui, self.transforms, &mut self.changed);
                 })
                 .response;
 
@@ -61,6 +65,7 @@ impl Widget for TransformsPanel<'_> {
 
                     show_available_transforms(ui, |transform_kind| {
                         self.transforms.push(AppliedTransform::new(transform_kind));
+                        self.changed = true;
                     })
                 })
                 .response;
@@ -89,7 +94,11 @@ impl Widget for TransformsPanel<'_> {
                 })
                 .response;
 
-            left_response | right_response | central_response
+            let mut final_response = left_response | right_response | central_response;
+            if self.changed {
+                final_response.mark_changed();
+            }
+            final_response
         })
         .inner
     }
@@ -107,7 +116,7 @@ impl TransformsPanel<'_> {
                             ui.label("Параметры отсутствуют");
                         }
                         TransformParameters::GammaCorrection(gamma_data) => {
-                            show_gamma_controls(ui, gamma_data);
+                            show_gamma_controls(ui, gamma_data, &mut self.changed);
                         }
                     }
                 });

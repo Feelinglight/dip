@@ -17,6 +17,7 @@ static FIRST_TRANSFORM_ID: usize = 1;
 pub fn show_applied_transforms(
     ui: &mut egui::Ui,
     transforms: &mut Vec<AppliedTransform>,
+    changed: &mut bool,
 ) -> egui::Response {
     let mut context_menu_actions = Vec::<TransformContextActions>::new();
 
@@ -45,11 +46,13 @@ pub fn show_applied_transforms(
             egui_ltreeview::Action::Move(dnd) => {
                 if let Some(source) = dnd.source.first() {
                     move_transform(*source, dnd.target, dnd.position, transforms);
+                    *changed = true;
                 }
             }
             egui_ltreeview::Action::Activate(activate) => {
                 if let Some(node_id) = activate.selected.first() {
                     toggle_transform_active(*node_id, transforms);
+                    *changed = true;
                 }
             }
             _ => {}
@@ -58,6 +61,7 @@ pub fn show_applied_transforms(
 
     for action in context_menu_actions {
         apply_action(&action, transforms);
+        *changed = true;
     }
 
     response

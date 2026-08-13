@@ -1,30 +1,14 @@
 use std::path::Path;
 
-use egui::{Vec2, Widget};
+use egui::{ColorImage, TextureHandle, Vec2, Widget};
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use image::{GrayImage, ImageReader};
+use image::GrayImage;
 use intensity::graduation::Negative;
-use intensity::hist::{HistArray, make_option_hist};
+use intensity::hist::{HistArray, empty_hist, make_hist};
 
 use crate::ZoomTexture;
 use crate::widgets::transforms_panel::{AppliedTransform, TransformsPanel};
-use crate::{errors::LoadImageError, widgets::zoom_texture::ZoomTextureState};
-
-struct ImageHistRunState {
-    image: Option<GrayImage>,
-    show_image_controls: bool,
-    hist: HistArray,
-}
-
-impl Default for ImageHistRunState {
-    fn default() -> Self {
-        Self {
-            image: None,
-            show_image_controls: false,
-            hist: make_option_hist(None),
-        }
-    }
-}
+use crate::widgets::zoom_texture::ZoomTextureState;
 
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -41,6 +25,17 @@ pub struct ImageHistState {
     run: ImageHistRunState,
 }
 
+struct Images {
+    pub original: GrayImage,
+    pub transformed: GrayImage,
+}
+
+struct ImageHistRunState {
+    images: Option<Images>,
+    show_image_controls: bool,
+    hist: HistArray,
+}
+
 impl Default for ImageHistState {
     fn default() -> Self {
         Self {
@@ -55,59 +50,60 @@ impl Default for ImageHistState {
     }
 }
 
-fn load_image(path: &Path) -> Result<GrayImage, LoadImageError> {
-    Ok(ImageReader::open(path)?
-        .with_guessed_format()?
-        .decode()?
-        .to_luma8())
+impl Default for ImageHistRunState {
+    fn default() -> Self {
+        Self {
+            images: None,
+            show_image_controls: false,
+            hist: empty_hist(),
+        }
+    }
+}
+
+fn load_gray_image(path: &Path, image_data: Option<&[u8]>) -> Result<GrayImage, String> {
+    let image_path = path.to_str().ok_or(
+        "Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы".to_string(),
+    )?;
+
+    let img = if let Some(data) = image_data {
+        image::load_from_memory(data)
+    } else {
+        image::open(image_path)
+    }
+    .map_err(|e| e.to_string())?;
+
+    Ok(img.to_luma8())
+}
+
+fn load_egui_texture(ctx: &egui::Context, image: &GrayImage) -> TextureHandle {
+    let colored_image = ColorImage::from_gray(
+        [image.width() as usize, image.height() as usize],
+        image.as_flat_samples().as_slice(),
+    );
+    ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR)
 }
 
 impl ImageHistState {
-    pub fn restore(&mut self, ctx: &egui::Context) {
-        self.reload_image(ctx);
-        for transform in &mut self.transforms {
-            transform.restore_state();
-        }
-    }
-
-    pub fn image_path(&self) -> &String {
-        &self.image_path_edit_text
-    }
-
     /// Загружает изображение из массива данных ``data``. Устанавливает путь к изображению в
     /// ``path``.
     /// Путь к изображению требуется для повторной загрузки изображения с помощью метода
     /// ``reload_image``
-    pub fn from_memory(
-        ctx: &egui::Context,
-        path: &Path,
-        data: &[u8],
-    ) -> Result<Self, &'static str> {
-        if let Some(image_path) = path.to_str() {
-            if let Ok(image) = image::load_from_memory(data) {
-                let gray_image: GrayImage = image.to_luma8();
+    pub fn from_memory(ctx: &egui::Context, path: &Path, data: &[u8]) -> Result<Self, String> {
+        let gray_image = load_gray_image(path, Some(data))
+            .map_err(|e| format!("Ошибка. Не удалось загрузить изображение: {e}"))?;
 
-                let mut zt_state = ZoomTextureState::default();
-                zt_state.set_texture(ctx, Ok(&gray_image), false);
+        let mut state = Self {
+            image_path_edit_text: path
+                .to_str()
+                .expect("Путь к изображению не валиден")
+                .to_string(),
+            ..Default::default()
+        };
 
-                let mut state = Self {
-                    zt_state,
-                    image_path_edit_text: String::from(image_path),
-                    run: ImageHistRunState {
-                        image: Some(gray_image),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                };
+        state.set_images(ctx, gray_image);
+        state.update_hist();
 
-                state.update_hist();
-                Ok(state)
-            } else {
-                Err("Ошибка. Не удалось загрузить изображение")
-            }
-        } else {
-            Err("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы")
-        }
+        Ok(state)
     }
 
     pub fn from_path(ctx: &egui::Context, path: &Path) -> Result<Self, &'static str> {
@@ -125,30 +121,77 @@ impl ImageHistState {
 
     /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
     fn reload_image(&mut self, ctx: &egui::Context) {
-        let image = load_image(Path::new(&self.image_path_edit_text));
-        self.zt_state.set_texture(ctx, image.as_ref(), false);
-        self.run.image = image.ok();
+        let image = load_gray_image(Path::new(&self.image_path_edit_text), None);
+
+        match image {
+            Ok(img) => {
+                self.set_images(ctx, img);
+            }
+            Err(message) => {
+                self.run.images = None;
+                self.zt_state.set_error(message);
+            }
+        }
+
         self.update_hist();
+    }
+
+    pub fn image_path(&self) -> &String {
+        &self.image_path_edit_text
+    }
+
+    pub fn restore(&mut self, ctx: &egui::Context) {
+        self.reload_image(ctx);
+        for transform in &mut self.transforms {
+            transform.restore_state();
+        }
+    }
+
+    fn set_images(&mut self, ctx: &egui::Context, original_image: GrayImage) {
+        let mut transformed = original_image.clone();
+
+        Self::apply_active_transforms(&self.transforms, &mut transformed);
+        self.zt_state
+            .set_texture(load_egui_texture(ctx, &transformed), false);
+
+        self.run.images = Some(Images {
+            original: original_image,
+            transformed,
+        });
+    }
+
+    fn apply_active_transforms(transforms: &[AppliedTransform], image: &mut GrayImage) {
+        for transform in transforms {
+            if transform.is_active() {
+                transform.apply(image);
+            }
+        }
+    }
+
+    fn apply_transforms(&mut self, ctx: &egui::Context) {
+        if let Some(images) = &mut self.run.images {
+            let mut new_transformed = images.original.clone();
+
+            Self::apply_active_transforms(&self.transforms, &mut new_transformed);
+            self.zt_state
+                .set_texture(load_egui_texture(ctx, &new_transformed), false);
+
+            images.transformed = new_transformed;
+        }
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
     /// Если изображение не загружено, то не делает ничего
-    fn reset_zoom_texture(&mut self, ctx: &egui::Context) {
-        if let Some(img) = &self.run.image {
-            self.zt_state.set_texture(ctx, Ok(img), false);
-        }
+    fn reset_zoom_texture(&mut self) {
+        self.zt_state.reset_parameters();
     }
 
     /// Строит гистограмму для текущего изображения
     fn update_hist(&mut self) {
-        self.run.hist = make_option_hist(self.run.image.as_ref());
-    }
-
-    fn test_function(&mut self, ui: &mut egui::Ui) {
-        if let Some(img) = &mut self.run.image {
-            img.negative_inplace();
-            self.update_hist();
-            self.reset_zoom_texture(ui.ctx());
+        self.run.hist = if let Some(Images { transformed, .. }) = &self.run.images {
+            make_hist(transformed)
+        } else {
+            empty_hist()
         }
     }
 
@@ -211,10 +254,6 @@ impl Widget for &mut ImageHist<'_> {
                         egui::Button::image(egui::include_image!("../icons/clear-image.png"));
                     if ui.add(clear_image_button).clicked() {
                         self.state.zt_state.reset_parameters();
-                    }
-
-                    if ui.button("Тест").clicked() {
-                        self.state.test_function(ui);
                     }
 
                     if ui.button("Преобразовать").clicked() {
@@ -292,7 +331,9 @@ impl ImageHist<'_> {
                     }
 
                     let transforms_panel = TransformsPanel::new(&mut self.state.transforms);
-                    ui.add(transforms_panel);
+                    if ui.add(transforms_panel).changed() {
+                        self.state.apply_transforms(ui.ctx());
+                    }
 
                     if class == egui::ViewportClass::EmbeddedWindow {
                     } else {
