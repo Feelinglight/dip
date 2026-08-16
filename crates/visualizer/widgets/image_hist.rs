@@ -150,6 +150,7 @@ impl ImageHistState {
         let mut transformed = original_image.clone();
 
         Self::apply_active_transforms(&self.transforms, &mut transformed);
+        self.update_hist();
         self.zt_state
             .set_texture(load_egui_texture(ctx, &transformed), false);
 
@@ -177,6 +178,7 @@ impl ImageHistState {
 
             images.transformed = new_transformed;
         }
+        self.update_hist();
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние

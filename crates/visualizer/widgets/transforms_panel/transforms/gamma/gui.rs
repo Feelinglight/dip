@@ -33,7 +33,7 @@ pub fn show_gamma_controls(
     let remaining_space = ui.available_width();
     ui.spacing_mut().slider_width = MIN_SLIDER_WIDTH.max(remaining_space - PLOT_WIDTH - 80.);
 
-    let gamma_max = 99.;
+    let gamma_max = 30.;
     // Значение gamma внутри слайдера
     let mut internal_gamma = gamma_to_slider_internal(gamma, gamma_max);
 
