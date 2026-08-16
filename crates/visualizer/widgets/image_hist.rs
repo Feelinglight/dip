@@ -3,7 +3,6 @@ use std::path::Path;
 use egui::{ColorImage, TextureHandle, Vec2, Widget};
 use egui_plot::{Bar, BarChart, Legend, Plot};
 use image::GrayImage;
-use intensity::graduation::Negative;
 use intensity::hist::{HistArray, empty_hist, make_hist};
 
 use crate::ZoomTexture;

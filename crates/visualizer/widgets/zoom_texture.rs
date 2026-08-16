@@ -1,9 +1,4 @@
-use egui::{
-    Align2, Color32, ColorImage, Context, FontId, Painter, Pos2, Rect, TextureHandle, Vec2, Widget,
-};
-use image::GrayImage;
-
-use crate::errors::LoadImageError;
+use egui::{Align2, Color32, FontId, Painter, Pos2, Rect, TextureHandle, Vec2, Widget};
 
 const MIN_ZOOM: f32 = 0.05;
 const MAX_ZOOM: f32 = 20.;

@@ -55,7 +55,7 @@ pub fn show_gamma_controls(
 
             ui.label("Константа:");
             if ui
-                .add(egui::Slider::new(&mut constant, 1.0..=100.))
+                .add(egui::Slider::new(&mut constant, 1.0..=15.))
                 .changed()
             {
                 gamma_data.set_parameters(constant, gamma);

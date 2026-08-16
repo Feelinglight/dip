@@ -1,4 +1,3 @@
-use egui::Response;
 use egui::{Panel, ScrollArea, Widget};
 
 use super::transforms::show_gamma_controls;

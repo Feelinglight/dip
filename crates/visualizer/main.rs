@@ -1,6 +1,5 @@
 mod app;
 mod config;
-mod errors;
 mod theme;
 mod widgets;
 

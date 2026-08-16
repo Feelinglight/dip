@@ -1,4 +1,5 @@
 use egui_plot::PlotPoint;
+use intensity::graduation::gamma_correct_single;
 
 #[derive(serde::Deserialize, serde::Serialize, Debug, Clone)]
 pub struct GammaCorrectionData {
@@ -22,7 +23,7 @@ impl Default for GammaCorrectionData {
 }
 
 impl GammaCorrectionData {
-    const PLOT_POINTS_COUNT: usize = 255;
+    const PLOT_POINTS_COUNT: usize = 100;
 
     #[allow(clippy::cast_precision_loss)]
     fn calculate_plot(&mut self) {
@@ -43,11 +44,11 @@ impl GammaCorrectionData {
         self.constant = constant;
         self.gamma = gamma;
 
+        #[allow(clippy::cast_precision_loss)]
         for (x, point) in self.plot_points.iter_mut().enumerate() {
-            #[allow(clippy::cast_precision_loss)]
             let x_norm = x as f64 / GammaCorrectionData::PLOT_POINTS_COUNT as f64;
             point.x = x_norm;
-            point.y = constant * (point.x.powf(gamma));
+            point.y = gamma_correct_single(x_norm, gamma, constant, 1.);
         }
     }
 

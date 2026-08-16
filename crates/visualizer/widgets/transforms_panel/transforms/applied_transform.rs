@@ -1,7 +1,7 @@
 use std::ops::{Deref, DerefMut};
 
 use image::{ImageBuffer, Pixel};
-use intensity::graduation::Negative;
+use intensity::graduation::{GammaCorrect, Negative};
 use uuid::Uuid;
 
 use super::GammaCorrectionData;
@@ -19,13 +19,6 @@ impl TransformKind {
             TransformKind::GammaCorrection => "Гамма-коррекция",
         }
     }
-
-    pub fn default_parameters(&self) -> TransformParameters {
-        match self {
-            TransformKind::Negative => TransformParameters::Negative,
-            TransformKind::GammaCorrection => TransformParameters::gamma_correction(),
-        }
-    }
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
@@ -35,8 +28,13 @@ pub enum TransformParameters {
 }
 
 impl TransformParameters {
-    pub fn gamma_correction() -> Self {
-        TransformParameters::GammaCorrection(GammaCorrectionData::default())
+    pub fn new(kind: &TransformKind) -> TransformParameters {
+        match kind {
+            TransformKind::Negative => TransformParameters::Negative,
+            TransformKind::GammaCorrection => {
+                TransformParameters::GammaCorrection(GammaCorrectionData::default())
+            }
+        }
     }
 }
 
@@ -52,7 +50,7 @@ impl AppliedTransform {
     pub fn new(kind: TransformKind) -> Self {
         Self {
             id: Uuid::new_v4(),
-            parameters: kind.default_parameters(),
+            parameters: TransformParameters::new(&kind),
             kind,
             active: true,
         }
@@ -90,11 +88,11 @@ impl AppliedTransform {
     {
         match &self.parameters {
             TransformParameters::GammaCorrection(data) => {
-                //
+                image_buffer.gamma_correct_inplace(data.gamma(), data.constant());
             }
             TransformParameters::Negative => {
                 image_buffer.negative_inplace();
             }
-        };
+        }
     }
 }
