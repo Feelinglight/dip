@@ -36,7 +36,7 @@ impl LogTransformData {
     pub fn set_parameters(&mut self, constant: f64, log_base: f64) {
         assert!(constant >= 1., "Константа должна быть больше, либо равна 1");
         assert!(
-            log_base > 0. && (log_base - 1.).abs() > 0.0001,
+            log_base > 0. && (log_base - 1.).abs() > 0.000_001,
             "Основание логарифма должно быть больше 0 и не равно 1"
         );
         assert!(

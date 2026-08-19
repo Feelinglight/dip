@@ -88,5 +88,7 @@ where
 
 #[inline]
 pub fn log_transform_single(value: f64, base: f64, constant: f64, max_value: f64) -> f64 {
-    constant * max_value * (value / max_value * (base - 1.) + 1.).log(base)
+    // log_norm всегда будет от 0 до 1
+    let log_norm = (value / max_value * (base - 1.) + 1.).log(base);
+    max_value * (constant * log_norm).min(1.)
 }
