@@ -1,15 +1,18 @@
 use std::ops::{Deref, DerefMut};
 
 use image::{ImageBuffer, Pixel};
+use intensity::graduation::LogTransform;
 use intensity::graduation::{GammaCorrect, Negative};
 use uuid::Uuid;
 
 use super::GammaCorrectionData;
+use super::LogTransformData;
 
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 pub enum TransformKind {
     Negative,
     GammaCorrection,
+    LogTransform,
 }
 
 impl TransformKind {
@@ -17,6 +20,7 @@ impl TransformKind {
         match self {
             TransformKind::Negative => "Негатив",
             TransformKind::GammaCorrection => "Гамма-коррекция",
+            TransformKind::LogTransform => "Логарифм. преобраз.",
         }
     }
 }
@@ -25,6 +29,7 @@ impl TransformKind {
 pub enum TransformParameters {
     Negative,
     GammaCorrection(GammaCorrectionData),
+    LogTransform(LogTransformData),
 }
 
 impl TransformParameters {
@@ -33,6 +38,9 @@ impl TransformParameters {
             TransformKind::Negative => TransformParameters::Negative,
             TransformKind::GammaCorrection => {
                 TransformParameters::GammaCorrection(GammaCorrectionData::default())
+            }
+            TransformKind::LogTransform => {
+                TransformParameters::LogTransform(LogTransformData::default())
             }
         }
     }
@@ -74,10 +82,13 @@ impl AppliedTransform {
 
     pub fn restore_state(&mut self) {
         match &mut self.parameters {
+            TransformParameters::Negative => {}
             TransformParameters::GammaCorrection(data) => {
                 data.restore();
             }
-            TransformParameters::Negative => {}
+            TransformParameters::LogTransform(data) => {
+                data.restore();
+            }
         }
     }
 
@@ -87,11 +98,14 @@ impl AppliedTransform {
         Container: Deref<Target = [P::Subpixel]> + DerefMut,
     {
         match &self.parameters {
+            TransformParameters::Negative => {
+                image_buffer.negative_inplace();
+            }
             TransformParameters::GammaCorrection(data) => {
                 image_buffer.gamma_correct_inplace(data.gamma(), data.constant());
             }
-            TransformParameters::Negative => {
-                image_buffer.negative_inplace();
+            TransformParameters::LogTransform(data) => {
+                image_buffer.log_transform_inplace(data.log_base(), data.constant());
             }
         }
     }

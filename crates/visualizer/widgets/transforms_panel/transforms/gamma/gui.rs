@@ -10,7 +10,7 @@ fn slider_internal_to_gamma(internal: f64, gamma_max: f64) -> f64 {
     if internal <= 1. {
         internal
     } else {
-        1. + (internal - 1.) * gamma_max
+        1. + (internal - 1.).powi(2) * gamma_max
     }
 }
 
@@ -18,7 +18,7 @@ fn gamma_to_slider_internal(gamma: f64, gamma_max: f64) -> f64 {
     if gamma <= 1. {
         gamma
     } else {
-        1. + (gamma - 1.) / gamma_max
+        1. + ((gamma - 1.) / gamma_max).sqrt()
     }
 }
 
@@ -33,7 +33,7 @@ pub fn show_gamma_controls(
     let remaining_space = ui.available_width();
     ui.spacing_mut().slider_width = MIN_SLIDER_WIDTH.max(remaining_space - PLOT_WIDTH - 80.);
 
-    let gamma_max = 30.;
+    let gamma_max = 29.;
     // Значение gamma внутри слайдера
     let mut internal_gamma = gamma_to_slider_internal(gamma, gamma_max);
 

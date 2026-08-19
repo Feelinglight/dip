@@ -23,6 +23,7 @@ pub fn show_available_transforms(
             builder.dir(TransformNodeId::IntensityDir, "Яркость");
             build_leaf(builder, TransformKind::Negative);
             build_leaf(builder, TransformKind::GammaCorrection);
+            build_leaf(builder, TransformKind::LogTransform);
             builder.close_dir();
         });
 

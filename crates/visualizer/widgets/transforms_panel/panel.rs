@@ -1,5 +1,7 @@
 use egui::{Panel, ScrollArea, Widget};
 
+use crate::widgets::transforms_panel::transforms::show_log_transform_controls;
+
 use super::transforms::show_gamma_controls;
 
 use super::applied_transforms_tree::show_applied_transforms;
@@ -116,6 +118,9 @@ impl TransformsPanel<'_> {
                         }
                         TransformParameters::GammaCorrection(gamma_data) => {
                             show_gamma_controls(ui, gamma_data, &mut self.changed);
+                        }
+                        TransformParameters::LogTransform(log_transform_data) => {
+                            show_log_transform_controls(ui, log_transform_data, &mut self.changed);
                         }
                     }
                 });
