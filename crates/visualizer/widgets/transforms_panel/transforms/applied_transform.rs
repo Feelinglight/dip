@@ -8,7 +8,7 @@ use uuid::Uuid;
 use super::GammaCorrectionData;
 use super::LogTransformData;
 
-#[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Clone, Copy, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 pub enum TransformKind {
     Negative,
     GammaCorrection,
@@ -16,7 +16,7 @@ pub enum TransformKind {
 }
 
 impl TransformKind {
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             TransformKind::Negative => "Негатив",
             TransformKind::GammaCorrection => "Гамма-коррекция",
@@ -25,22 +25,67 @@ impl TransformKind {
     }
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(serde::Deserialize, serde::Serialize, Debug)]
-pub enum TransformParameters {
+pub enum Transform {
     Negative,
     GammaCorrection(GammaCorrectionData),
     LogTransform(LogTransformData),
 }
 
-impl TransformParameters {
-    pub fn new(kind: &TransformKind) -> TransformParameters {
+impl Transform {
+    pub fn new(kind: TransformKind) -> Transform {
         match kind {
-            TransformKind::Negative => TransformParameters::Negative,
+            TransformKind::Negative => Transform::Negative,
             TransformKind::GammaCorrection => {
-                TransformParameters::GammaCorrection(GammaCorrectionData::default())
+                Transform::GammaCorrection(GammaCorrectionData::default())
             }
-            TransformKind::LogTransform => {
-                TransformParameters::LogTransform(LogTransformData::default())
+            TransformKind::LogTransform => Transform::LogTransform(LogTransformData::default()),
+        }
+    }
+
+    pub fn available_kinds() -> &'static [TransformKind] {
+        &[
+            TransformKind::Negative,
+            TransformKind::GammaCorrection,
+            TransformKind::LogTransform,
+        ]
+    }
+
+    pub fn kind(&self) -> TransformKind {
+        match self {
+            Transform::Negative => TransformKind::Negative,
+            Transform::GammaCorrection(_) => TransformKind::GammaCorrection,
+            Transform::LogTransform(_) => TransformKind::LogTransform,
+        }
+    }
+
+    pub fn restore_state(&mut self) {
+        match self {
+            Transform::Negative => {}
+            Transform::GammaCorrection(data) => {
+                data.restore();
+            }
+            Transform::LogTransform(data) => {
+                data.restore();
+            }
+        }
+    }
+
+    pub fn apply<P, Container>(&self, image_buffer: &mut ImageBuffer<P, Container>)
+    where
+        P: Pixel,
+        Container: Deref<Target = [P::Subpixel]> + DerefMut,
+    {
+        match self {
+            Transform::Negative => {
+                image_buffer.negative_inplace();
+            }
+            Transform::GammaCorrection(data) => {
+                image_buffer.gamma_correct_inplace(data.gamma(), data.constant());
+            }
+            Transform::LogTransform(data) => {
+                image_buffer.log_transform_inplace(data.log_base(), data.constant());
             }
         }
     }
@@ -49,8 +94,7 @@ impl TransformParameters {
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 pub struct AppliedTransform {
     pub id: Uuid,
-    pub kind: TransformKind,
-    pub parameters: TransformParameters,
+    pub op: Transform,
     active: bool,
 }
 
@@ -58,8 +102,7 @@ impl AppliedTransform {
     pub fn new(kind: TransformKind) -> Self {
         Self {
             id: Uuid::new_v4(),
-            parameters: TransformParameters::new(&kind),
-            kind,
+            op: Transform::new(kind),
             active: true,
         }
     }
@@ -78,35 +121,5 @@ impl AppliedTransform {
 
     pub fn toggle_active(&mut self) {
         self.active = !self.active;
-    }
-
-    pub fn restore_state(&mut self) {
-        match &mut self.parameters {
-            TransformParameters::Negative => {}
-            TransformParameters::GammaCorrection(data) => {
-                data.restore();
-            }
-            TransformParameters::LogTransform(data) => {
-                data.restore();
-            }
-        }
-    }
-
-    pub fn apply<P, Container>(&self, image_buffer: &mut ImageBuffer<P, Container>)
-    where
-        P: Pixel,
-        Container: Deref<Target = [P::Subpixel]> + DerefMut,
-    {
-        match &self.parameters {
-            TransformParameters::Negative => {
-                image_buffer.negative_inplace();
-            }
-            TransformParameters::GammaCorrection(data) => {
-                image_buffer.gamma_correct_inplace(data.gamma(), data.constant());
-            }
-            TransformParameters::LogTransform(data) => {
-                image_buffer.log_transform_inplace(data.log_base(), data.constant());
-            }
-        }
     }
 }

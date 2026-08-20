@@ -1,5 +1,7 @@
 use egui_ltreeview::TreeViewBuilder;
 
+use super::transforms::Transform;
+
 use super::transforms::TransformKind;
 
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
@@ -21,9 +23,9 @@ pub fn show_available_transforms(
         .allow_drag_and_drop(false)
         .show(ui, |builder| {
             builder.dir(TransformNodeId::IntensityDir, "Яркость");
-            build_leaf(builder, TransformKind::Negative);
-            build_leaf(builder, TransformKind::GammaCorrection);
-            build_leaf(builder, TransformKind::LogTransform);
+            for kind in Transform::available_kinds() {
+                build_leaf(builder, *kind);
+            }
             builder.close_dir();
         });
 
@@ -31,7 +33,7 @@ pub fn show_available_transforms(
         if let egui_ltreeview::Action::Activate(activate) = action {
             activate.selected.iter().for_each(|node_id| {
                 if let TransformNodeId::Transform(transform_kind) = node_id {
-                    on_activate(transform_kind.clone());
+                    on_activate(*transform_kind);
                 }
             });
         }

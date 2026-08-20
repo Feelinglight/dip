@@ -14,7 +14,7 @@ impl Default for LogTransformData {
     fn default() -> Self {
         let mut instance = Self {
             constant: 1.,
-            log_base: 50.,
+            log_base: 0.99,
             plot_points: vec![],
         };
         instance.calculate_plot();

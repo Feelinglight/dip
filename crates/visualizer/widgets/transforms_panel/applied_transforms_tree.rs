@@ -70,7 +70,7 @@ pub fn show_applied_transforms(
 fn show_transform_node(ui: &mut egui::Ui, node_id: usize, transform: &AppliedTransform) {
     ui.add_enabled(
         transform.is_active(),
-        Label::new(format!("{}. {}", node_id, transform.kind.name())).selectable(false),
+        Label::new(format!("{}. {}", node_id, transform.op.kind().name())).selectable(false),
     );
 }
 

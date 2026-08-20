@@ -7,7 +7,7 @@ use super::transforms::show_gamma_controls;
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
 use super::transforms::AppliedTransform;
-use super::transforms::TransformParameters;
+use super::transforms::Transform;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
@@ -110,16 +110,16 @@ impl TransformsPanel<'_> {
         for (idx, transform) in self.transforms.iter_mut().enumerate() {
             ui.push_id(transform.id, |ui| {
                 ui.add_enabled_ui(transform.is_active(), |ui| {
-                    ui.heading(format!("{}. {}", idx + 1, transform.kind.name()));
+                    ui.heading(format!("{}. {}", idx + 1, transform.op.kind().name()));
 
-                    match &mut transform.parameters {
-                        TransformParameters::Negative => {
+                    match &mut transform.op {
+                        Transform::Negative => {
                             ui.label("Параметры отсутствуют");
                         }
-                        TransformParameters::GammaCorrection(gamma_data) => {
+                        Transform::GammaCorrection(gamma_data) => {
                             show_gamma_controls(ui, gamma_data, &mut self.changed);
                         }
-                        TransformParameters::LogTransform(log_transform_data) => {
+                        Transform::LogTransform(log_transform_data) => {
                             show_log_transform_controls(ui, log_transform_data, &mut self.changed);
                         }
                     }

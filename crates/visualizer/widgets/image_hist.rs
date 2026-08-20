@@ -142,7 +142,7 @@ impl ImageHistState {
     pub fn restore(&mut self, ctx: &egui::Context) {
         self.reload_image(ctx);
         for transform in &mut self.transforms {
-            transform.restore_state();
+            transform.op.restore_state();
         }
     }
 
@@ -163,7 +163,7 @@ impl ImageHistState {
     fn apply_active_transforms(transforms: &[AppliedTransform], image: &mut GrayImage) {
         for transform in transforms {
             if transform.is_active() {
-                transform.apply(image);
+                transform.op.apply(image);
             }
         }
     }
