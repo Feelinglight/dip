@@ -162,9 +162,7 @@ impl ImageHistState {
 
     fn apply_active_transforms(transforms: &[AppliedTransform], image: &mut GrayImage) {
         for transform in transforms {
-            if transform.is_active() {
-                transform.op.apply(image);
-            }
+            transform.apply_if_active(image);
         }
     }
 

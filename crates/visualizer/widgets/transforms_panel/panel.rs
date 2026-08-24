@@ -1,13 +1,9 @@
 use egui::{Panel, ScrollArea, Widget};
 
-use crate::widgets::transforms_panel::transforms::show_log_transform_controls;
-
-use super::transforms::show_gamma_controls;
-
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
 use super::transforms::AppliedTransform;
-use super::transforms::Transform;
+use super::transforms::show_transform_controls;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
@@ -112,17 +108,7 @@ impl TransformsPanel<'_> {
                 ui.add_enabled_ui(transform.is_active(), |ui| {
                     ui.heading(format!("{}. {}", idx + 1, transform.op.kind().name()));
 
-                    match &mut transform.op {
-                        Transform::Negative => {
-                            ui.label("Параметры отсутствуют");
-                        }
-                        Transform::GammaCorrection(gamma_data) => {
-                            show_gamma_controls(ui, gamma_data, &mut self.changed);
-                        }
-                        Transform::LogTransform(log_transform_data) => {
-                            show_log_transform_controls(ui, log_transform_data, &mut self.changed);
-                        }
-                    }
+                    show_transform_controls(ui, &mut transform.op, &mut self.changed);
                 });
                 ui.separator();
             });
