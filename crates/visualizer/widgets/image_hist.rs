@@ -179,12 +179,6 @@ impl ImageHistState {
         self.update_hist();
     }
 
-    /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
-    /// Если изображение не загружено, то не делает ничего
-    fn reset_zoom_texture(&mut self) {
-        self.zt_state.reset_parameters();
-    }
-
     /// Строит гистограмму для текущего изображения
     fn update_hist(&mut self) {
         self.run.hist = if let Some(Images { transformed, .. }) = &self.run.images {

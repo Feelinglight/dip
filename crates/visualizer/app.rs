@@ -7,7 +7,7 @@ use crate::{
     theme,
     widgets::{
         image_hist::ImageHistState,
-        tabs::{self, ImageHistTab},
+        tabs::{self, ImageHistTab, OpenedImage},
     },
 };
 use egui_dock::{DockArea, DockState};
@@ -15,8 +15,8 @@ use egui_dock::{DockArea, DockState};
 pub struct DipPlotsApp {
     config: AppConfig,
     tree: DockState<ImageHistTab>,
-    filepath_tx: mpsc::Sender<(egui_dock::NodePath, String, Vec<u8>)>,
-    filepath_rx: mpsc::Receiver<(egui_dock::NodePath, String, Vec<u8>)>,
+    filepath_tx: mpsc::Sender<tabs::OpenedImage>,
+    filepath_rx: mpsc::Receiver<tabs::OpenedImage>,
 }
 
 impl DipPlotsApp {
@@ -64,8 +64,9 @@ impl eframe::App for DipPlotsApp {
         });
 
         egui::Panel::top("my_top_bar").show(ui, |ui| {
-            if ui.button("Test").clicked() {
-                println!("test");
+            if ui.button("Вот так добавлять кнопки над DockArea").clicked()
+            {
+                println!("Вот так");
             }
         });
 
@@ -85,18 +86,22 @@ impl eframe::App for DipPlotsApp {
             );
 
         match self.filepath_rx.try_recv() {
-            Ok((node_path, filepath, data)) => {
-                match ImageHistState::from_memory(ui, Path::new(&filepath), &data) {
+            Ok(OpenedImage {
+                node_path,
+                path,
+                data,
+            }) => {
+                match ImageHistState::from_memory(ui, Path::new(&path), &data) {
                     Ok(image_hist_state) => {
                         self.tree.set_focused_node_and_surface(node_path);
                         self.tree
                             .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
                     }
                     Err(err) => {
-                        error!("Не удалось загрузить изображение по пути \"{filepath}\": {err}");
+                        error!("Не удалось загрузить изображение по пути \"{path}\": {err}");
                     }
                 }
-                self.config.last_image_path = filepath;
+                self.config.last_image_path = path;
             }
             Err(mpsc::TryRecvError::Disconnected) => {
                 warn!("Канал отключился до того как имя файла было принято");

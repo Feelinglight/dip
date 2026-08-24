@@ -6,6 +6,12 @@ use rfd::FileHandle;
 
 use crate::widgets::image_hist::{ImageHist, ImageHistState};
 
+pub struct OpenedImage {
+    pub node_path: NodePath,
+    pub path: String,
+    pub data: Vec<u8>,
+}
+
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ImageHistTab {
     pub id: egui::Id,
@@ -33,14 +39,14 @@ impl ImageHistTab {
 pub struct TabViewer<'a> {
     tabs_count: usize,
     default_folder: &'a String,
-    filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>,
+    filepath_tx: mpsc::Sender<OpenedImage>,
 }
 
 impl<'a> TabViewer<'a> {
     pub fn new(
         tabs_count: usize,
         default_folder: &'a String,
-        filepath_tx: mpsc::Sender<(NodePath, String, Vec<u8>)>,
+        filepath_tx: mpsc::Sender<OpenedImage>,
     ) -> Self {
         Self {
             tabs_count,
@@ -89,7 +95,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 }
 
 impl TabViewer<'_> {
-    fn add_image_tab(&mut self, path: NodePath) {
+    fn add_image_tab(&mut self, node_path: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
             .set_directory(self.default_folder)
@@ -102,7 +108,11 @@ impl TabViewer<'_> {
             if let Some(file_handle) = file {
                 let data = file_handle.read().await;
                 let filename = TabViewer::filename(&file_handle);
-                if let Err(err) = tx.send((path, filename.clone(), data)) {
+                if let Err(err) = tx.send(OpenedImage {
+                    node_path,
+                    path: filename.clone(),
+                    data,
+                }) {
                     warn!("Ошибка при записи в канал (файл {filename}): {err}");
                 }
             }
