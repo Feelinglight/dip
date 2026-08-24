@@ -79,7 +79,7 @@ impl eframe::App for DipPlotsApp {
                 ui,
                 &mut tabs::TabViewer::new(
                     tabs_count,
-                    &self.config.last_image_folder_path,
+                    &self.config.last_image_path,
                     self.filepath_tx.clone(),
                 ),
             );
@@ -96,7 +96,7 @@ impl eframe::App for DipPlotsApp {
                         error!("Не удалось загрузить изображение по пути \"{filepath}\": {err}");
                     }
                 }
-                self.config.last_image_folder_path = filepath;
+                self.config.last_image_path = filepath;
             }
             Err(mpsc::TryRecvError::Disconnected) => {
                 warn!("Канал отключился до того как имя файла было принято");
