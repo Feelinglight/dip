@@ -3,9 +3,7 @@ mod config;
 mod theme;
 mod widgets;
 
-pub use app::DipPlotsApp;
-
-pub use widgets::zoom_texture::ZoomTexture;
+use app::DipPlotsApp;
 
 #[cfg(not(target_arch = "wasm32"))]
 fn main() -> eframe::Result {

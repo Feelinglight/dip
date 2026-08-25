@@ -1,20 +1,13 @@
 use eframe::Frame;
+use egui_dock::{DockArea, DockState};
 use log::{error, warn};
 use std::{path::Path, sync::mpsc};
 
-use crate::{
-    config::AppConfig,
-    theme,
-    widgets::{
-        image_hist::ImageHistState,
-        tabs::{self, ImageHistTab, OpenedImage},
-    },
-};
-use egui_dock::{DockArea, DockState};
+use crate::{config::AppConfig, theme, widgets::image_hist::ImageHistState, widgets::tabs};
 
 pub struct DipPlotsApp {
     config: AppConfig,
-    tree: DockState<ImageHistTab>,
+    tree: DockState<tabs::ImageHistTab>,
     filepath_tx: mpsc::Sender<tabs::OpenedImage>,
     filepath_rx: mpsc::Receiver<tabs::OpenedImage>,
 }
@@ -31,9 +24,9 @@ impl DipPlotsApp {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        let mut tree: DockState<ImageHistTab> = serde_json::from_str(&config.tabs_state)
+        let mut tree: DockState<tabs::ImageHistTab> = serde_json::from_str(&config.tabs_state)
             .ok()
-            .unwrap_or_else(|| DockState::new(vec![ImageHistTab::default()]));
+            .unwrap_or_else(|| DockState::new(vec![tabs::ImageHistTab::default()]));
 
         for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
             image_hist_tab.state.restore(&cc.egui_ctx);
@@ -86,7 +79,7 @@ impl eframe::App for DipPlotsApp {
             );
 
         match self.filepath_rx.try_recv() {
-            Ok(OpenedImage {
+            Ok(tabs::OpenedImage {
                 node_path,
                 path,
                 data,
@@ -95,7 +88,7 @@ impl eframe::App for DipPlotsApp {
                     Ok(image_hist_state) => {
                         self.tree.set_focused_node_and_surface(node_path);
                         self.tree
-                            .push_to_focused_leaf(ImageHistTab::new(image_hist_state));
+                            .push_to_focused_leaf(tabs::ImageHistTab::new(image_hist_state));
                     }
                     Err(err) => {
                         error!("Не удалось загрузить изображение по пути \"{path}\": {err}");

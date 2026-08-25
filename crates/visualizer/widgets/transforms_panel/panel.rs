@@ -37,9 +37,8 @@ impl Widget for TransformsPanel<'_> {
                     ui.horizontal(|ui| {
                         ui.heading("Применено");
 
-                        let clear_image_button = egui::Button::image(egui::include_image!(
-                            "../../icons/clear-image.png"
-                        ));
+                        let clear_image_button =
+                            egui::Button::image(egui::include_image!("../icons/clear-image.png"));
                         if ui.add(clear_image_button).clicked() {
                             self.transforms.clear();
                             self.changed = true;

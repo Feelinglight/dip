@@ -38,19 +38,19 @@ impl ImageHistTab {
 
 pub struct TabViewer<'a> {
     tabs_count: usize,
-    default_folder: &'a String,
+    default_path: &'a String,
     filepath_tx: mpsc::Sender<OpenedImage>,
 }
 
 impl<'a> TabViewer<'a> {
     pub fn new(
         tabs_count: usize,
-        default_folder: &'a String,
+        default_path: &'a String,
         filepath_tx: mpsc::Sender<OpenedImage>,
     ) -> Self {
         Self {
             tabs_count,
-            default_folder,
+            default_path,
             filepath_tx,
         }
     }
@@ -98,7 +98,8 @@ impl TabViewer<'_> {
     fn add_image_tab(&mut self, node_path: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
-            .set_directory(self.default_folder)
+            // Если default_path - путь к файлу, то будет открыта родительская папка
+            .set_directory(self.default_path)
             .pick_file();
 
         let tx = self.filepath_tx.clone();
