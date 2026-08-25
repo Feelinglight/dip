@@ -67,7 +67,7 @@ impl LogTransformData {
         self.log_base
     }
 
-    pub fn plot_points(&self) -> &Vec<PlotPoint> {
+    pub fn plot_points(&self) -> &[PlotPoint] {
         &self.plot_points
     }
 

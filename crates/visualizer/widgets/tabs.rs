@@ -38,7 +38,7 @@ impl ImageHistTab {
 
 pub struct TabViewer<'a> {
     tabs_count: usize,
-    default_path: &'a String,
+    default_path: &'a str,
     filepath_tx: mpsc::Sender<OpenedImage>,
 }
 

@@ -9,8 +9,8 @@ enum TransformContextActions {
     Delete(usize),
 }
 
-static GROUP_1_ID: usize = 0;
-static FIRST_TRANSFORM_ID: usize = 1;
+const GROUP_1_ID: usize = 0;
+const FIRST_TRANSFORM_ID: usize = 1;
 
 /// Отобразить примененные преобразования в виде дерева
 /// Может менять преобразования в векторе местами и изменять сами преобразования

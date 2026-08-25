@@ -64,7 +64,7 @@ impl GammaCorrectionData {
         self.gamma
     }
 
-    pub fn plot_points(&self) -> &Vec<PlotPoint> {
+    pub fn plot_points(&self) -> &[PlotPoint] {
         &self.plot_points
     }
 

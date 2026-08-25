@@ -1,36 +1,36 @@
 use std::path::Path;
 
-use egui::{ColorImage, TextureHandle};
 use image::GrayImage;
 use intensity::hist::{HistArray, empty_hist, make_hist};
 
 use crate::widgets::transforms_panel::AppliedTransform;
 use crate::widgets::zoom_texture::ZoomTextureState;
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct ImageHistState {
-    pub zt_state: ZoomTextureState,
-    pub transforms: Vec<AppliedTransform>,
-    pub image_path_edit_text: String,
-    pub hist_enable: bool,
+use super::load_image::{load_gray_image, load_texture};
 
-    pub transforms_viewport_size: Option<egui::Vec2>,
-    pub transforms_viewport_pos: Option<egui::Pos2>,
-
-    #[serde(skip)]
-    pub run: ImageHistRunState,
-}
-
-pub struct Images {
+pub(super) struct Images {
     pub original: GrayImage,
     pub transformed: GrayImage,
 }
 
-pub struct ImageHistRunState {
-    pub images: Option<Images>,
-    pub show_image_controls: bool,
-    pub hist: HistArray,
+#[derive(serde::Deserialize, serde::Serialize)]
+pub struct ImageHistState {
+    zt_state: ZoomTextureState,
+    transforms: Vec<AppliedTransform>,
+    image_path_edit_text: String,
+    hist_enable: bool,
+
+    transforms_viewport_size: Option<egui::Vec2>,
+    transforms_viewport_pos: Option<egui::Pos2>,
+
+    #[serde(skip)]
+    run: ImageHistRunState,
+}
+
+struct ImageHistRunState {
+    images: Option<Images>,
+    show_image_controls: bool,
+    hist: HistArray,
 }
 
 impl Default for ImageHistState {
@@ -57,29 +57,6 @@ impl Default for ImageHistRunState {
     }
 }
 
-fn load_gray_image(path: &Path, image_data: Option<&[u8]>) -> Result<GrayImage, String> {
-    let image_path = path.to_str().ok_or(
-        "Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы".to_string(),
-    )?;
-
-    let img = if let Some(data) = image_data {
-        image::load_from_memory(data)
-    } else {
-        image::open(image_path)
-    }
-    .map_err(|e| e.to_string())?;
-
-    Ok(img.to_luma8())
-}
-
-fn load_egui_texture(ctx: &egui::Context, image: &GrayImage) -> TextureHandle {
-    let colored_image = ColorImage::from_gray(
-        [image.width() as usize, image.height() as usize],
-        image.as_flat_samples().as_slice(),
-    );
-    ctx.load_texture("dip", colored_image, egui::TextureOptions::LINEAR)
-}
-
 impl ImageHistState {
     /// Загружает изображение из массива данных ``data``. Устанавливает путь к изображению в
     /// ``path``.
@@ -98,26 +75,12 @@ impl ImageHistState {
         };
 
         state.set_images(ctx, gray_image);
-        state.update_hist();
 
         Ok(state)
     }
 
-    pub fn from_path(ctx: &egui::Context, path: &Path) -> Result<Self, &'static str> {
-        if let Some(image_path) = path.to_str() {
-            let mut state = Self {
-                image_path_edit_text: String::from(image_path),
-                ..Default::default()
-            };
-            state.reload_image(ctx);
-            Ok(state)
-        } else {
-            Err("Ошибка. Не удалось загрузить изображение: путь содержит не UTF-8 символы")
-        }
-    }
-
     /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
-    pub fn reload_image(&mut self, ctx: &egui::Context) {
+    pub(super) fn reload_image(&mut self, ctx: &egui::Context) {
         let image = load_gray_image(Path::new(&self.image_path_edit_text), None);
 
         match image {
@@ -133,7 +96,7 @@ impl ImageHistState {
         self.update_hist();
     }
 
-    pub fn image_path(&self) -> &String {
+    pub fn image_path(&self) -> &str {
         &self.image_path_edit_text
     }
 
@@ -144,43 +107,37 @@ impl ImageHistState {
         }
     }
 
-    fn set_images(&mut self, ctx: &egui::Context, original_image: GrayImage) {
+    fn set_images(&mut self, ctx: &egui::Context, original_image: image::GrayImage) {
         let mut transformed = original_image.clone();
-
         Self::apply_active_transforms(&self.transforms, &mut transformed);
-        self.update_hist();
+
         self.zt_state
-            .set_texture(load_egui_texture(ctx, &transformed), false);
+            .set_texture(load_texture(ctx, &transformed), false);
 
         self.run.images = Some(Images {
             original: original_image,
             transformed,
         });
+        self.update_hist();
     }
 
-    fn apply_active_transforms(transforms: &[AppliedTransform], image: &mut GrayImage) {
+    fn apply_active_transforms(transforms: &[AppliedTransform], image: &mut image::GrayImage) {
         for transform in transforms {
             transform.apply_if_active(image);
         }
     }
 
-    pub fn apply_transforms(&mut self, ctx: &egui::Context) {
+    pub(super) fn apply_transforms(&mut self, ctx: &egui::Context) {
         if let Some(images) = &mut self.run.images {
             let mut new_transformed = images.original.clone();
 
             Self::apply_active_transforms(&self.transforms, &mut new_transformed);
             self.zt_state
-                .set_texture(load_egui_texture(ctx, &new_transformed), false);
+                .set_texture(load_texture(ctx, &new_transformed), false);
 
             images.transformed = new_transformed;
         }
         self.update_hist();
-    }
-
-    /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
-    /// Если изображение не загружено, то не делает ничего
-    pub fn reset_zoom_texture(&mut self) {
-        self.zt_state.reset_parameters();
     }
 
     /// Строит гистограмму для текущего изображения
@@ -190,5 +147,62 @@ impl ImageHistState {
         } else {
             empty_hist()
         }
+    }
+    /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
+    /// Если изображение не загружено, то не делает ничего
+    pub(super) fn reset_zoom_texture(&mut self) {
+        self.zt_state.reset_parameters();
+    }
+
+    pub(super) fn zoom_texture_state_mut(&mut self) -> &mut ZoomTextureState {
+        &mut self.zt_state
+    }
+
+    pub(super) fn image_path_mut(&mut self) -> &mut String {
+        &mut self.image_path_edit_text
+    }
+
+    pub(super) fn histogram(&self) -> &HistArray {
+        &self.run.hist
+    }
+
+    pub(super) fn histogram_enabled(&self) -> bool {
+        self.hist_enable
+    }
+
+    pub(super) fn toggle_histogram(&mut self) {
+        self.hist_enable = !self.hist_enable;
+    }
+
+    pub(super) fn open_transforms_viewport(&mut self) {
+        self.run.show_image_controls = true;
+    }
+
+    pub(super) fn close_transforms_viewport(&mut self) {
+        self.run.show_image_controls = false;
+    }
+
+    pub(super) fn transforms_viewport_open(&self) -> bool {
+        self.run.show_image_controls
+    }
+
+    pub(super) fn transforms_viewport_size(&self) -> Option<egui::Vec2> {
+        self.transforms_viewport_size
+    }
+
+    pub(super) fn set_transforms_viewport_size(&mut self, size: egui::Vec2) {
+        self.transforms_viewport_size = Some(size);
+    }
+
+    pub(super) fn transforms_viewport_pos(&self) -> Option<egui::Pos2> {
+        self.transforms_viewport_pos
+    }
+
+    pub(super) fn set_transforms_viewport_pos(&mut self, pos: egui::Pos2) {
+        self.transforms_viewport_pos = Some(pos);
+    }
+
+    pub(super) fn transforms_mut(&mut self) -> &mut Vec<AppliedTransform> {
+        &mut self.transforms
     }
 }

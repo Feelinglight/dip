@@ -1,3 +1,4 @@
+mod load_image;
 mod state;
 mod widget;
 
