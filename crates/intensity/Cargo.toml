@@ -3,6 +3,13 @@ name = "intensity"
 version = "0.1.0"
 edition = "2024"
 
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
 [dependencies]
 image = "0.25.9"
 num-traits = "0.2.19"
+
+[lints]
+workspace = true
