@@ -1,5 +1,6 @@
 mod app;
 mod config;
+mod image_picker;
 mod theme;
 mod widgets;
 

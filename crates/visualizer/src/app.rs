@@ -1,15 +1,20 @@
-use eframe::Frame;
-use egui_dock::{DockArea, DockState};
-use log::{error, warn};
-use std::{path::Path, sync::mpsc};
+use std::path::Path;
 
-use crate::{config::AppConfig, theme, widgets::image_hist::ImageHistState, widgets::tabs};
+use eframe::Frame;
+use egui_dock::{DockArea, DockState, NodePath};
+use log::error;
+
+use crate::{
+    config::AppConfig,
+    image_picker::{ImagePicker, PickedImage},
+    theme,
+    widgets::{image_hist::ImageHistState, tabs},
+};
 
 pub struct DipPlotsApp {
     config: AppConfig,
     tree: DockState<tabs::ImageHistTab>,
-    filepath_tx: mpsc::Sender<tabs::OpenedImage>,
-    filepath_rx: mpsc::Receiver<tabs::OpenedImage>,
+    image_picker: ImagePicker<NodePath>,
 }
 
 impl DipPlotsApp {
@@ -32,13 +37,12 @@ impl DipPlotsApp {
             image_hist_tab.state.restore(&cc.egui_ctx);
         }
 
-        let (filepath_tx, filepath_rx) = mpsc::channel();
+        let image_picker = ImagePicker::new(config.last_image_path.as_ref());
 
         Self {
             config,
             tree,
-            filepath_tx,
-            filepath_rx,
+            image_picker,
         }
     }
 }
@@ -71,20 +75,16 @@ impl eframe::App for DipPlotsApp {
             .show_tab_name_on_hover(true)
             .show_inside(
                 ui,
-                &mut tabs::TabViewer::new(
-                    tabs_count,
-                    &self.config.last_image_path,
-                    self.filepath_tx.clone(),
-                ),
+                &mut tabs::TabViewer::new(tabs_count, &self.image_picker),
             );
 
-        match self.filepath_rx.try_recv() {
-            Ok(tabs::OpenedImage {
-                node_path,
-                path,
-                data,
-            }) => {
-                match ImageHistState::from_memory(ui, Path::new(&path), &data) {
+        self.image_picker.poll_picked_image(
+            |PickedImage {
+                 path,
+                 bytes,
+                 user_data: node_path,
+             }| {
+                match ImageHistState::from_memory(ui, Path::new(&path), &bytes) {
                     Ok(image_hist_state) => {
                         self.tree.set_focused_node_and_surface(node_path);
                         self.tree
@@ -94,19 +94,15 @@ impl eframe::App for DipPlotsApp {
                         error!("Не удалось загрузить изображение по пути \"{path}\": {err}");
                     }
                 }
-                self.config.last_image_path = path;
-            }
-            Err(mpsc::TryRecvError::Disconnected) => {
-                warn!("Канал отключился до того как имя файла было принято");
-            }
-            Err(mpsc::TryRecvError::Empty) => {}
-        }
+            },
+        );
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         if let Ok(tree_json) = serde_json::to_string(&self.tree) {
             self.config.tabs_state = tree_json;
         }
+        self.config.last_image_path = self.image_picker.get_pick_path().clone();
         eframe::set_value(storage, eframe::APP_KEY, &self.config);
     }
 }
