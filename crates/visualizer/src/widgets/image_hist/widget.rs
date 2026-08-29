@@ -123,7 +123,7 @@ impl ImageHist<'_> {
             "Гистограмма изображения",
             hist.iter()
                 .enumerate()
-                .map(|(x, &y)| Bar::new(x as f64, y))
+                .map(|(x, &y)| Bar::new(x as f64, y as f64))
                 .collect(),
         )
         .color(egui::Color32::LIGHT_BLUE);
