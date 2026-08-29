@@ -2,10 +2,10 @@ use image::GrayImage;
 
 const HIST_ARRAY_SIZE: usize = u8::MAX as usize + 1;
 
-pub type HistArray = [usize; HIST_ARRAY_SIZE];
+pub type Histogram = [u64; HIST_ARRAY_SIZE];
 
 #[must_use]
-pub fn histogram(image: &GrayImage) -> HistArray {
+pub fn histogram(image: &GrayImage) -> Histogram {
     let mut hist = [0; HIST_ARRAY_SIZE];
     for sample in image.as_flat_samples().samples {
         if let Some(elem) = hist.get_mut(*sample as usize) {
@@ -16,6 +16,6 @@ pub fn histogram(image: &GrayImage) -> HistArray {
 }
 
 #[must_use]
-pub fn empty_histogram() -> HistArray {
+pub fn empty_histogram() -> Histogram {
     [0; HIST_ARRAY_SIZE]
 }

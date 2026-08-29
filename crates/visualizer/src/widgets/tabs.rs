@@ -1,9 +1,6 @@
 use egui_dock::NodePath;
 
-use crate::{
-    image_picker::ImagePicker,
-    widgets::image_hist::{ImageHist, ImageHistState},
-};
+use crate::widgets::image_hist::{ImageHist, ImageHistState};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ImageHistTab {
@@ -31,14 +28,14 @@ impl ImageHistTab {
 
 pub struct TabViewer<'a> {
     tabs_count: usize,
-    image_picker: &'a ImagePicker<NodePath>,
+    on_open_image: &'a mut dyn FnMut(NodePath),
 }
 
 impl<'a> TabViewer<'a> {
-    pub fn new(tabs_count: usize, image_picker: &'a ImagePicker<NodePath>) -> Self {
+    pub fn new(tabs_count: usize, on_open_image: &'a mut dyn FnMut(NodePath)) -> Self {
         Self {
             tabs_count,
-            image_picker,
+            on_open_image,
         }
     }
 }
@@ -68,13 +65,12 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         ui.add(&mut image_hist);
 
         if image_hist.open_image_requested() {
-            self.image_picker
-                .request_image(NodePath::right_node(NodePath::MAIN_ROOT));
+            (self.on_open_image)(NodePath::right_node(NodePath::MAIN_ROOT));
         }
     }
 
     fn on_add(&mut self, path: NodePath) {
-        self.image_picker.request_image(path);
+        (self.on_open_image)(path);
     }
 
     fn is_closeable(&self, _tab: &Self::Tab) -> bool {

@@ -4,7 +4,7 @@ use crate::widgets::zoom_texture::ZoomTexture;
 use egui::Vec2;
 use egui::Widget;
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use intensity::histogram::HistArray;
+use intensity::histogram::Histogram;
 
 pub struct ImageHist<'a> {
     id_salt: egui::IdSalt,
@@ -117,7 +117,7 @@ impl ImageHist<'_> {
         });
     }
 
-    fn show_histogram(ui: &mut egui::Ui, hist: &HistArray) {
+    fn show_histogram(ui: &mut egui::Ui, hist: &Histogram) {
         #[allow(clippy::cast_precision_loss, clippy::indexing_slicing)]
         let chart = BarChart::new(
             "Гистограмма изображения",

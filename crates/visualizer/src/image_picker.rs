@@ -1,23 +1,24 @@
 use std::sync::mpsc;
 
+use egui_dock::NodePath;
 use log::warn;
 use rfd::FileHandle;
 
-pub struct PickedImage<T> {
+pub struct PickedImage {
     pub path: String,
     pub bytes: Vec<u8>,
-    pub user_data: T,
+    pub target_node: NodePath,
 }
 
 #[derive(Debug)]
-pub struct ImagePicker<T> {
+pub struct ImagePicker {
     pick_path: String,
 
-    picked_image_tx: mpsc::Sender<PickedImage<T>>,
-    picked_image_rx: mpsc::Receiver<PickedImage<T>>,
+    picked_image_tx: mpsc::Sender<PickedImage>,
+    picked_image_rx: mpsc::Receiver<PickedImage>,
 }
 
-impl<T: std::marker::Send + 'static> ImagePicker<T> {
+impl ImagePicker {
     /// - `pick_path` - путь в файловой системе, где будет открыт файловый менеджер.
     ///   Может быть путем к папке или файлу. Если это путь к файлу, то будет открыта родительская
     ///   папка
@@ -34,11 +35,7 @@ impl<T: std::marker::Send + 'static> ImagePicker<T> {
         &self.pick_path
     }
 
-    pub fn request_image(&self, user_data: T) {
-        self.open_pick_window(user_data);
-    }
-
-    pub fn poll_picked_image(&mut self, on_pick: impl FnOnce(PickedImage<T>)) {
+    pub fn poll_picked_image(&mut self, on_pick: impl FnOnce(PickedImage)) {
         match self.picked_image_rx.try_recv() {
             Ok(picked_image) => {
                 self.pick_path.clone_from(&picked_image.path);
@@ -51,7 +48,7 @@ impl<T: std::marker::Send + 'static> ImagePicker<T> {
         }
     }
 
-    fn open_pick_window(&self, user_data: T) {
+    pub fn open_pick_window(&self, target_node: NodePath) {
         let task = rfd::AsyncFileDialog::new()
             .add_filter("image", &["png", "jpg", "jpeg", "svg"])
             // Если pick_path - путь к файлу, то будет открыта родительская папка
@@ -64,8 +61,8 @@ impl<T: std::marker::Send + 'static> ImagePicker<T> {
             let file = task.await;
             if let Some(file_handle) = file {
                 let _ = image_tx.send(PickedImage {
-                    user_data,
-                    path: ImagePicker::<T>::filename(&file_handle),
+                    target_node,
+                    path: ImagePicker::filename(&file_handle),
                     bytes: file_handle.read().await,
                 });
             }

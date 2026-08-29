@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use eframe::Frame;
-use egui_dock::{DockArea, DockState, NodePath};
+use egui_dock::{DockArea, DockState};
 use log::error;
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
 pub struct DipPlotsApp {
     config: AppConfig,
     tree: DockState<tabs::ImageHistTab>,
-    image_picker: ImagePicker<NodePath>,
+    image_picker: ImagePicker,
 }
 
 impl DipPlotsApp {
@@ -75,14 +75,16 @@ impl eframe::App for DipPlotsApp {
             .show_tab_name_on_hover(true)
             .show_inside(
                 ui,
-                &mut tabs::TabViewer::new(tabs_count, &self.image_picker),
+                &mut tabs::TabViewer::new(tabs_count, &mut |path| {
+                    self.image_picker.open_pick_window(path);
+                }),
             );
 
         self.image_picker.poll_picked_image(
             |PickedImage {
                  path,
                  bytes,
-                 user_data: node_path,
+                 target_node: node_path,
              }| {
                 match ImageHistState::from_memory(ui, Path::new(&path), &bytes) {
                     Ok(image_hist_state) => {

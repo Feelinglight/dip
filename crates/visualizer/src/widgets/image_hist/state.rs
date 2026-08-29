@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use image::GrayImage;
-use intensity::histogram::{HistArray, empty_histogram, histogram};
+use intensity::histogram::{Histogram, empty_histogram, histogram};
 
 use crate::widgets::transforms_panel::AppliedTransform;
 use crate::widgets::zoom_texture::ZoomTextureState;
@@ -30,7 +30,7 @@ pub struct ImageHistState {
 struct ImageHistRunState {
     images: Option<Images>,
     show_image_controls: bool,
-    hist: HistArray,
+    hist: Histogram,
 }
 
 impl Default for ImageHistState {
@@ -162,7 +162,7 @@ impl ImageHistState {
         &mut self.image_path_edit_text
     }
 
-    pub(super) fn histogram(&self) -> &HistArray {
+    pub(super) fn histogram(&self) -> &Histogram {
         &self.run.hist
     }
 
