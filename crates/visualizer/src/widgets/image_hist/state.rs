@@ -1,7 +1,7 @@
 use std::path::Path;
 
 use image::GrayImage;
-use intensity::hist::{HistArray, empty_hist, make_hist};
+use intensity::histogram::{HistArray, empty_histogram, histogram};
 
 use crate::widgets::transforms_panel::AppliedTransform;
 use crate::widgets::zoom_texture::ZoomTextureState;
@@ -52,7 +52,7 @@ impl Default for ImageHistRunState {
         Self {
             images: None,
             show_image_controls: false,
-            hist: empty_hist(),
+            hist: empty_histogram(),
         }
     }
 }
@@ -143,9 +143,9 @@ impl ImageHistState {
     /// Строит гистограмму для текущего изображения
     fn update_hist(&mut self) {
         self.run.hist = if let Some(Images { transformed, .. }) = &self.run.images {
-            make_hist(transformed)
+            histogram(transformed)
         } else {
-            empty_hist()
+            empty_histogram()
         }
     }
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние

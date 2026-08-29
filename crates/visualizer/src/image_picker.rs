@@ -30,7 +30,7 @@ impl<T: std::marker::Send + 'static> ImagePicker<T> {
         }
     }
 
-    pub fn get_pick_path(&self) -> &String {
+    pub fn get_pick_path(&self) -> &str {
         &self.pick_path
     }
 

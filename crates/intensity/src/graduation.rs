@@ -6,6 +6,7 @@ use num_traits::{NumCast, ToPrimitive};
 pub trait Negative: Sized {
     fn negative_inplace(&mut self);
 
+    #[must_use]
     fn negative(mut self) -> Self {
         self.negative_inplace();
         self
@@ -27,6 +28,7 @@ where
 pub trait GammaCorrect: Sized {
     fn gamma_correct_inplace(&mut self, gamma: f64, constant: f64);
 
+    #[must_use]
     fn gamma_correct(mut self, gamma: f64, constant: f64) -> Self {
         self.gamma_correct_inplace(gamma, constant);
         self
@@ -53,6 +55,7 @@ where
 }
 
 #[inline]
+#[must_use]
 pub fn gamma_correct_single(value: f64, gamma: f64, constant: f64, max_value: f64) -> f64 {
     let powered = (value / max_value).powf(gamma);
     (constant * powered).min(1.) * max_value
@@ -61,6 +64,7 @@ pub fn gamma_correct_single(value: f64, gamma: f64, constant: f64, max_value: f6
 pub trait LogTransform: Sized {
     fn log_transform_inplace(&mut self, gamma: f64, constant: f64);
 
+    #[must_use]
     fn log_transform(mut self, gamma: f64, constant: f64) -> Self {
         self.log_transform_inplace(gamma, constant);
         self
@@ -87,6 +91,7 @@ where
 }
 
 #[inline]
+#[must_use]
 pub fn log_transform_single(value: f64, base: f64, constant: f64, max_value: f64) -> f64 {
     // log_norm всегда будет от 0 до 1
     let log_norm = (value / max_value * (base - 1.) + 1.).log(base);

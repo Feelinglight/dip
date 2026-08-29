@@ -4,7 +4,7 @@ use crate::widgets::zoom_texture::ZoomTexture;
 use egui::Vec2;
 use egui::Widget;
 use egui_plot::{Bar, BarChart, Legend, Plot};
-use intensity::hist::HistArray;
+use intensity::histogram::HistArray;
 
 pub struct ImageHist<'a> {
     id_salt: egui::IdSalt,

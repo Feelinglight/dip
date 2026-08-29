@@ -102,7 +102,7 @@ impl eframe::App for DipPlotsApp {
         if let Ok(tree_json) = serde_json::to_string(&self.tree) {
             self.config.tabs_state = tree_json;
         }
-        self.config.last_image_path = self.image_picker.get_pick_path().clone();
+        self.config.last_image_path = self.image_picker.get_pick_path().to_string();
         eframe::set_value(storage, eframe::APP_KEY, &self.config);
     }
 }

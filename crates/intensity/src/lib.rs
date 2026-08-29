@@ -1,2 +1,2 @@
 pub mod graduation;
-pub mod hist;
+pub mod histogram;
