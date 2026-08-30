@@ -3,10 +3,9 @@ use std::path::Path;
 
 use intensity::histogram::Histogram;
 
-use crate::widgets::zoom_texture::ZoomTextureState;
 use crate::widgets::{image_hist::models::LoadedImage, transforms_panel::AppliedTransform};
 
-use super::load_image::{load_gray_image, load_texture};
+use super::load_image::load_gray_image;
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub struct ImageHistState {
@@ -22,7 +21,7 @@ impl ImageHistState {
     /// ``path``.
     /// Путь к изображению требуется для повторной загрузки изображения с помощью метода
     /// ``reload_image``
-    pub fn from_memory(ctx: &egui::Context, path: &Path, data: &[u8]) -> Result<Self, String> {
+    pub fn from_memory(path: &Path, data: &[u8]) -> Result<Self, String> {
         let gray_image = load_gray_image(path, Some(data))
             .map_err(|e| format!("Ошибка. Не удалось загрузить изображение: {e}"))?;
 
@@ -37,24 +36,22 @@ impl ImageHistState {
             ..Default::default()
         };
 
-        state.set_images(ctx, gray_image);
+        state.set_images(gray_image);
 
         Ok(state)
     }
 
     /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
-    pub(super) fn reload_image(&mut self, ctx: &egui::Context) {
+    pub(super) fn reload_image(&mut self) {
         let image = load_gray_image(Path::new(&self.config.image_path), None);
 
         match image {
             Ok(img) => {
-                self.set_images(ctx, img);
+                self.set_images(img);
             }
             Err(message) => {
                 self.runtime.image = ImageLoadState::Failed(message);
-                if let ImageLoadState::Failed(message) = &self.runtime.image {
-                    self.view.zt_state.set_error(message.clone());
-                }
+                self.runtime.texture = None;
             }
         }
     }
@@ -63,41 +60,30 @@ impl ImageHistState {
         &self.config.image_path
     }
 
-    pub fn restore(&mut self, ctx: &egui::Context) {
-        self.reload_image(ctx);
+    pub fn restore(&mut self) {
+        self.reload_image();
         for transform in &mut self.config.transforms {
             transform.op.restore_state();
         }
     }
 
-    fn set_images(&mut self, ctx: &egui::Context, original_image: image::GrayImage) {
+    fn set_images(&mut self, original_image: image::GrayImage) {
         let image = LoadedImage::from_original(original_image, &self.config.transforms);
-
-        self.view
-            .zt_state
-            .set_texture(load_texture(ctx, image.transformed()), false);
-
         self.runtime.image = ImageLoadState::Loaded(Box::new(image));
+        self.runtime.texture = None;
     }
 
-    pub(super) fn apply_transforms(&mut self, ctx: &egui::Context) {
+    pub(super) fn apply_transforms(&mut self) {
         if let ImageLoadState::Loaded(image) = &mut self.runtime.image {
             image.retransform(&self.config.transforms);
-
-            self.view
-                .zt_state
-                .set_texture(load_texture(ctx, image.transformed()), false);
+            self.runtime.texture = None;
         }
     }
 
     /// Сбрасывает текущее загруженное изображение в его первоначальное состояние
     /// Если изображение не загружено, то не делает ничего
-    pub(super) fn reset_zoom_texture(&mut self) {
-        self.view.zt_state.reset_parameters();
-    }
-
-    pub(super) fn zoom_texture_state_mut(&mut self) -> &mut ZoomTextureState {
-        &mut self.view.zt_state
+    pub(super) fn reset_viewport(&mut self) {
+        self.view.viewport.reset();
     }
 
     pub(super) fn image_path_mut(&mut self) -> &mut String {

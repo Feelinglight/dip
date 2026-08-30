@@ -1,7 +1,9 @@
+use egui::TextureHandle;
 use image::GrayImage;
 use intensity::histogram::{Histogram, histogram};
 
-use crate::widgets::{transforms_panel::AppliedTransform, zoom_texture::ZoomTextureState};
+use super::image_viewport::ImageViewportState;
+use crate::widgets::transforms_panel::AppliedTransform;
 
 /// Сохраняется между перезапусками приложения и относится только к бизнес логике приложения
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -63,12 +65,14 @@ pub(super) enum ImageLoadState {
 /// Не сохраняется между запусками приложения и инициализируется при запуске из сохраняемых данных
 pub(super) struct ImageHistRuntimeState {
     pub(super) image: ImageLoadState,
+    pub(super) texture: Option<TextureHandle>,
 }
 
 impl Default for ImageHistRuntimeState {
     fn default() -> Self {
         Self {
             image: ImageLoadState::Empty,
+            texture: None,
         }
     }
 }
@@ -76,7 +80,7 @@ impl Default for ImageHistRuntimeState {
 /// Сохраняется между перезапусками приложения и относится только к UI
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(super) struct ImageHistViewState {
-    pub(super) zt_state: ZoomTextureState,
+    pub(super) viewport: ImageViewportState,
     pub(super) hist_enable: bool,
 
     pub(super) show_image_controls: bool,
@@ -88,7 +92,7 @@ pub(super) struct ImageHistViewState {
 impl Default for ImageHistViewState {
     fn default() -> Self {
         Self {
-            zt_state: ZoomTextureState::default(),
+            viewport: ImageViewportState::default(),
             hist_enable: true,
             show_image_controls: false,
             transforms_viewport_size: None,

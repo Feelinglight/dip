@@ -5,57 +5,46 @@ const MAX_ZOOM: f32 = 20.;
 const ZOOM_SPEED: f32 = 0.005;
 
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(default)]
-pub struct ZoomTextureState {
-    #[serde(skip)]
-    texture: Result<TextureHandle, String>,
-
+pub struct ImageViewportState {
     zoom: f32,
     pan: Vec2,
 }
 
-impl Default for ZoomTextureState {
+impl Default for ImageViewportState {
     fn default() -> Self {
         Self {
-            texture: Err(String::from("Выберите изображение")),
             zoom: 1.,
             pan: Vec2::ZERO,
         }
     }
 }
 
-impl ZoomTextureState {
-    /// Устанавливает текстуру для отображения
-    /// Если установлен флаг ``reset_params``, то сбрасывает параметры отображения картинки,
-    /// такие как zoom и pan
-    pub fn set_texture(&mut self, texture: TextureHandle, reset_params: bool) {
-        self.texture = Ok(texture);
-        if reset_params {
-            self.reset_parameters();
-        }
-    }
-
-    /// Устанавливает ошибку
-    /// Текст ошибки будет отрисован как изображение
-    pub fn set_error(&mut self, error: String) {
-        self.texture = Err(error);
-    }
-
-    pub fn reset_parameters(&mut self) {
-        self.zoom = 1.;
-        self.pan = Vec2::ZERO;
+impl ImageViewportState {
+    pub fn reset(&mut self) {
+        *self = ImageViewportState::default();
     }
 }
 
-pub struct ZoomTexture<'a> {
-    state: &'a mut ZoomTextureState,
+pub enum ImageViewportContent<'a> {
+    Texture(&'a TextureHandle),
+    Message(&'a str),
+}
+
+pub struct ImageViewport<'state, 'content> {
+    state: &'state mut ImageViewportState,
+    texture: ImageViewportContent<'content>,
     available_size: Vec2,
 }
 
-impl<'a> ZoomTexture<'a> {
-    pub fn new(state: &'a mut ZoomTextureState, available_size: Vec2) -> ZoomTexture<'a> {
+impl<'state, 'content> ImageViewport<'state, 'content> {
+    pub fn new(
+        state: &'state mut ImageViewportState,
+        texture: ImageViewportContent<'content>,
+        available_size: Vec2,
+    ) -> ImageViewport<'state, 'content> {
         Self {
             state,
+            texture,
             available_size,
         }
     }
@@ -84,22 +73,30 @@ impl<'a> ZoomTexture<'a> {
             Color32::BLACK,
         );
     }
+
+    /// Рассчитывает зум, при котором картинка с размером `image_size` будет занимать ровно
+    /// `available_size`
+    fn fit_zoom(available_space: Vec2, image_size: Vec2) -> f32 {
+        (available_space.x / image_size.x)
+            .min(available_space.y / image_size.y)
+            .max(0.001)
+    }
 }
 
-impl Widget for ZoomTexture<'_> {
+impl Widget for ImageViewport<'_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let (response, painter) =
             ui.allocate_painter(self.available_size, egui::Sense::click_and_drag());
 
-        match &self.state.texture {
-            Err(err) => {
-                ZoomTexture::show_error(&painter, err, self.available_size);
+        match self.texture {
+            ImageViewportContent::Message(message) => {
+                ImageViewport::show_error(&painter, message, self.available_size);
             }
-            Ok(texture) => {
+            ImageViewportContent::Texture(texture) => {
                 // Подгон зума так, чтобы картинка занимала все доступное пространство при первом
                 // отображении и при этом не выходила за его границы
                 let image_size = texture.size_vec2();
-                let fitted_zoom = fit_zoom(self.available_size, image_size);
+                let fitted_zoom = ImageViewport::fit_zoom(self.available_size, image_size);
                 let zoom = fitted_zoom * self.state.zoom;
 
                 // Обработка зума колесиком
@@ -132,12 +129,4 @@ impl Widget for ZoomTexture<'_> {
         }
         response
     }
-}
-
-/// Рассчитывает зум, при котором картинка с размером `image_size` будет занимать ровно
-/// `available_size`
-fn fit_zoom(available_space: Vec2, image_size: Vec2) -> f32 {
-    (available_space.x / image_size.x)
-        .min(available_space.y / image_size.y)
-        .max(0.001)
 }

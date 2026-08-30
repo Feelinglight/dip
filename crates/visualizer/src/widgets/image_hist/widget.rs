@@ -1,6 +1,9 @@
+use super::image_viewport::ImageViewport;
+use super::image_viewport::ImageViewportContent;
+use super::models::ImageLoadState;
 use super::state::ImageHistState;
 use crate::widgets::transforms_panel::TransformsPanel;
-use crate::widgets::zoom_texture::ZoomTexture;
+use egui::ColorImage;
 use egui::Vec2;
 use egui::Widget;
 use egui_plot::{Bar, BarChart, Legend, Plot};
@@ -33,14 +36,39 @@ impl Widget for &mut ImageHist<'_> {
                     });
                 }
 
-                let zoom_texture =
-                    ZoomTexture::new(self.state.zoom_texture_state_mut(), ui.available_size());
-                let zt_response = ui.add(zoom_texture);
+                let content = match &self.state.runtime.image {
+                    ImageLoadState::Empty => {
+                        ImageViewportContent::Message("Изображение не загружено")
+                    }
+                    ImageLoadState::Failed(message) => {
+                        ImageViewportContent::Message(message.as_ref())
+                    }
+                    ImageLoadState::Loaded(image) => {
+                        let texture = self.state.runtime.texture.get_or_insert_with(|| {
+                            let transformed = &image.transformed();
+                            let colored_image = ColorImage::from_gray(
+                                [transformed.width() as usize, transformed.height() as usize],
+                                transformed.as_flat_samples().as_slice(),
+                            );
 
-                if self.open_image_requested || zt_response.double_clicked() {
+                            ui.ctx().load_texture(
+                                "dip",
+                                colored_image,
+                                egui::TextureOptions::LINEAR,
+                            )
+                        });
+                        ImageViewportContent::Texture(texture)
+                    }
+                };
+
+                let viewport =
+                    ImageViewport::new(&mut self.state.view.viewport, content, ui.available_size());
+                let viewport_response = ui.add(viewport);
+
+                if self.open_image_requested || viewport_response.double_clicked() {
                     self.open_image_requested = true;
                 }
-                zt_response
+                viewport_response
             })
             .inner
         })
@@ -82,8 +110,8 @@ impl<'a> ImageHist<'a> {
                 .on_hover_text("Перезагрузить изображение")
                 .clicked()
             {
-                self.state.reset_zoom_texture();
-                self.state.reload_image(ui.ctx());
+                self.state.reset_viewport();
+                self.state.reload_image();
             }
 
             ui.text_edit_singleline(self.state.image_path_mut());
@@ -95,7 +123,7 @@ impl<'a> ImageHist<'a> {
                 .on_hover_text("Сбросить масштаб и сдвиг")
                 .clicked()
             {
-                self.state.reset_zoom_texture();
+                self.state.reset_viewport();
             }
 
             if ui.button("Преобразования").clicked() {
@@ -170,7 +198,7 @@ impl<'a> ImageHist<'a> {
 
                 let transforms_panel = TransformsPanel::new(self.state.transforms_mut());
                 if ui.add(transforms_panel).changed() {
-                    self.state.apply_transforms(ui.ctx());
+                    self.state.apply_transforms();
                 }
 
                 if class != egui::ViewportClass::EmbeddedWindow {

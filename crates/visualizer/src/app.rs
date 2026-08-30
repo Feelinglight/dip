@@ -34,7 +34,7 @@ impl DipPlotsApp {
             .unwrap_or_else(|| DockState::new(vec![tabs::ImageHistTab::default()]));
 
         for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
-            image_hist_tab.state.restore(&cc.egui_ctx);
+            image_hist_tab.state.restore();
         }
 
         let image_picker = ImagePicker::new(config.last_image_path.as_ref());
@@ -86,7 +86,7 @@ impl eframe::App for DipPlotsApp {
                  bytes,
                  target_node: node_path,
              }| {
-                match ImageHistState::from_memory(ui, Path::new(&path), &bytes) {
+                match ImageHistState::from_memory(Path::new(&path), &bytes) {
                     Ok(image_hist_state) => {
                         self.tree.set_focused_node_and_surface(node_path);
                         self.tree
