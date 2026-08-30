@@ -12,16 +12,6 @@ pub struct ImageHist<'a> {
     open_image_requested: bool,
 }
 
-impl<'a> ImageHist<'a> {
-    pub fn new(id_salt: impl egui::AsIdSalt, state: &'a mut ImageHistState) -> ImageHist<'a> {
-        Self {
-            id_salt: egui::IdSalt::new(id_salt),
-            state,
-            open_image_requested: false,
-        }
-    }
-}
-
 impl Widget for &mut ImageHist<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.push_id(self.id_salt, |ui| {
@@ -36,7 +26,9 @@ impl Widget for &mut ImageHist<'_> {
                 if self.state.histogram_enabled() {
                     egui::Panel::right(id).show(ui, |ui| {
                         ui.vertical(|ui| {
-                            ImageHist::show_histogram(ui, self.state.histogram());
+                            if let Some(hist) = self.state.histogram() {
+                                ImageHist::show_histogram(ui, hist);
+                            }
                         });
                     });
                 }
@@ -56,7 +48,15 @@ impl Widget for &mut ImageHist<'_> {
     }
 }
 
-impl ImageHist<'_> {
+impl<'a> ImageHist<'a> {
+    pub fn new(id_salt: impl egui::AsIdSalt, state: &'a mut ImageHistState) -> ImageHist<'a> {
+        Self {
+            id_salt: egui::IdSalt::new(id_salt),
+            state,
+            open_image_requested: false,
+        }
+    }
+
     pub fn open_image_requested(&mut self) -> bool {
         let requested = self.open_image_requested;
         self.open_image_requested = false;
