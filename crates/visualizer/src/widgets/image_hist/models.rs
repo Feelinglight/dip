@@ -1,5 +1,5 @@
 use image::GrayImage;
-use intensity;
+use intensity::histogram::{Histogram, histogram};
 
 use crate::widgets::{transforms_panel::AppliedTransform, zoom_texture::ZoomTextureState};
 
@@ -11,9 +11,9 @@ pub(super) struct ImageHistConfig {
 }
 
 pub(super) struct LoadedImage {
-    pub(super) original: GrayImage,
-    pub(super) transformed: GrayImage,
-    pub(super) histogram: Box<intensity::histogram::Histogram>,
+    original: GrayImage,
+    transformed: GrayImage,
+    histogram: Histogram,
 }
 
 impl LoadedImage {
@@ -21,37 +21,54 @@ impl LoadedImage {
         original: GrayImage,
         transforms: &[AppliedTransform],
     ) -> LoadedImage {
-        let mut transformed = original.clone();
-        for transform in transforms {
-            transform.apply_if_active(&mut transformed);
-        }
+        let (transformed, histogram) = Self::transform_original(&original, transforms);
         Self {
             original,
-            histogram: Box::new(intensity::histogram::histogram(&transformed)),
             transformed,
+            histogram,
         }
     }
 
     pub(super) fn retransform(&mut self, transforms: &[AppliedTransform]) {
-        self.transformed = self.original.clone();
+        (self.transformed, self.histogram) = Self::transform_original(&self.original, transforms);
+    }
 
+    pub(super) fn transformed(&self) -> &GrayImage {
+        &self.transformed
+    }
+
+    pub(super) fn histogram(&self) -> &Histogram {
+        &self.histogram
+    }
+
+    fn transform_original(
+        original: &GrayImage,
+        transforms: &[AppliedTransform],
+    ) -> (GrayImage, Histogram) {
+        let mut transformed = original.clone();
         for transform in transforms {
-            transform.apply_if_active(&mut self.transformed);
+            transform.apply_if_active(&mut transformed);
         }
-
-        *self.histogram = intensity::histogram::histogram(&self.transformed);
+        let histogram = histogram(&transformed);
+        (transformed, histogram)
     }
 }
 
-/// Не сохраняется между запусками приложения и инициализируется при запуске из сохраняемых данных
-pub(super) struct ImgaeHistRuntimeState {
-    pub(super) image: Result<LoadedImage, String>,
+pub(super) enum ImageLoadState {
+    Empty,
+    Loaded(Box<LoadedImage>),
+    Failed(String),
 }
 
-impl Default for ImgaeHistRuntimeState {
+/// Не сохраняется между запусками приложения и инициализируется при запуске из сохраняемых данных
+pub(super) struct ImageHistRuntimeState {
+    pub(super) image: ImageLoadState,
+}
+
+impl Default for ImageHistRuntimeState {
     fn default() -> Self {
         Self {
-            image: Result::Err("Изображение не загружено".to_string()),
+            image: ImageLoadState::Empty,
         }
     }
 }
@@ -60,7 +77,6 @@ impl Default for ImgaeHistRuntimeState {
 #[derive(serde::Deserialize, serde::Serialize)]
 pub(super) struct ImageHistViewState {
     pub(super) zt_state: ZoomTextureState,
-    pub(super) image_path_edit_text: String,
     pub(super) hist_enable: bool,
 
     pub(super) show_image_controls: bool,
@@ -73,7 +89,6 @@ impl Default for ImageHistViewState {
     fn default() -> Self {
         Self {
             zt_state: ZoomTextureState::default(),
-            image_path_edit_text: String::new(),
             hist_enable: true,
             show_image_controls: false,
             transforms_viewport_size: None,

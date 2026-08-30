@@ -1,4 +1,4 @@
-use super::models::{ImageHistConfig, ImageHistViewState, ImgaeHistRuntimeState};
+use super::models::{ImageHistConfig, ImageHistRuntimeState, ImageHistViewState, ImageLoadState};
 use std::path::Path;
 
 use intensity::histogram::Histogram;
@@ -13,8 +13,8 @@ pub struct ImageHistState {
     pub(super) config: ImageHistConfig,
     pub(super) view: ImageHistViewState,
 
-    #[serde[skip]]
-    pub(super) runtime: ImgaeHistRuntimeState,
+    #[serde(skip)]
+    pub(super) runtime: ImageHistRuntimeState,
 }
 
 impl ImageHistState {
@@ -51,8 +51,10 @@ impl ImageHistState {
                 self.set_images(ctx, img);
             }
             Err(message) => {
-                self.runtime.image = Err(message.clone());
-                self.view.zt_state.set_error(message);
+                self.runtime.image = ImageLoadState::Failed(message);
+                if let ImageLoadState::Failed(message) = &self.runtime.image {
+                    self.view.zt_state.set_error(message.clone());
+                }
             }
         }
     }
@@ -73,18 +75,18 @@ impl ImageHistState {
 
         self.view
             .zt_state
-            .set_texture(load_texture(ctx, &image.transformed), false);
+            .set_texture(load_texture(ctx, image.transformed()), false);
 
-        self.runtime.image = Ok(image);
+        self.runtime.image = ImageLoadState::Loaded(Box::new(image));
     }
 
     pub(super) fn apply_transforms(&mut self, ctx: &egui::Context) {
-        if let Ok(image) = &mut self.runtime.image {
+        if let ImageLoadState::Loaded(image) = &mut self.runtime.image {
             image.retransform(&self.config.transforms);
 
             self.view
                 .zt_state
-                .set_texture(load_texture(ctx, &image.transformed), false);
+                .set_texture(load_texture(ctx, image.transformed()), false);
         }
     }
 
@@ -103,10 +105,9 @@ impl ImageHistState {
     }
 
     pub(super) fn histogram(&self) -> Option<&Histogram> {
-        if let Ok(image) = &self.runtime.image {
-            Some(&image.histogram)
-        } else {
-            None
+        match &self.runtime.image {
+            ImageLoadState::Loaded(image) => Some(image.histogram()),
+            ImageLoadState::Empty | ImageLoadState::Failed(_) => None,
         }
     }
 
