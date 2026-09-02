@@ -1,6 +1,8 @@
 use egui_plot::{Legend, Line, Plot, PlotPoints};
+use intensity::gamma_correction::GammaCorrectionParams;
+use uuid::Uuid;
 
-use super::data::GammaCorrectionData;
+use crate::widgets::transforms_panel::TransformEditorCache;
 
 const PLOT_WIDTH: f32 = 200.;
 const PLOT_HEIGHT: f32 = 200.;
@@ -24,7 +26,9 @@ fn gamma_to_slider_internal(gamma: f64, gamma_max: f64) -> f64 {
 
 pub fn show_gamma_controls(
     ui: &mut egui::Ui,
-    gamma_data: &mut GammaCorrectionData,
+    step_id: Uuid,
+    gamma_data: &mut GammaCorrectionParams,
+    cache: &mut TransformEditorCache,
     changed: &mut bool,
 ) {
     let mut gamma = gamma_data.gamma();
@@ -49,7 +53,7 @@ pub fn show_gamma_controls(
                 .changed()
             {
                 gamma = slider_internal_to_gamma(internal_gamma, gamma_max);
-                gamma_data.set_parameters(constant, gamma);
+                *gamma_data = GammaCorrectionParams::new(constant, gamma);
                 *changed = true;
             }
 
@@ -58,12 +62,12 @@ pub fn show_gamma_controls(
                 .add(egui::Slider::new(&mut constant, 1.0..=15.))
                 .changed()
             {
-                gamma_data.set_parameters(constant, gamma);
+                *gamma_data = GammaCorrectionParams::new(constant, gamma);
                 *changed = true;
             }
 
             if ui.button("Сбросить").clicked() {
-                gamma_data.reset_parameters();
+                gamma_data.reset();
                 *changed = true;
             }
         });
@@ -79,7 +83,7 @@ pub fn show_gamma_controls(
             .show(ui, |plot_ui| {
                 plot_ui.line(Line::new(
                     "График",
-                    PlotPoints::Borrowed(gamma_data.plot_points()),
+                    PlotPoints::Borrowed(cache.gamma_points(step_id, gamma_data)),
                 ));
             });
     });

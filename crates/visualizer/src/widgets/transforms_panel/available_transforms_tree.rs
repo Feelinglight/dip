@@ -1,8 +1,6 @@
 use egui_ltreeview::TreeViewBuilder;
 
-use super::transforms::Transform;
-
-use super::transforms::TransformKind;
+use crate::pipeline::{Transform, TransformKind};
 
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 enum TransformNodeId {
@@ -42,6 +40,14 @@ pub fn show_available_transforms(
 }
 
 fn build_leaf(builder: &mut TreeViewBuilder<TransformNodeId>, transform_kind: TransformKind) {
-    let leaf_name = transform_kind.name();
+    let leaf_name = transform_kind_label(transform_kind);
     builder.leaf(TransformNodeId::Transform(transform_kind), leaf_name);
+}
+
+pub(super) const fn transform_kind_label(transform_kind: TransformKind) -> &'static str {
+    match transform_kind {
+        TransformKind::Negative => "Негатив",
+        TransformKind::GammaCorrection => "Гамма-коррекция",
+        TransformKind::LogTransform => "Логарифм. преобраз.",
+    }
 }

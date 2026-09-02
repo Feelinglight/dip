@@ -26,15 +26,14 @@ egui_ltreeview = {version = "0.8.0", features = ["persistence"]}
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 env_logger = "0.11.11"
-uuid = { version = "1.23.4", features = ["v4"] }
+uuid = { version = "1.23.4", features = ["v4", "serde"] }
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen-futures = "0.4.76"
 web-sys = "0.3.103"              # to access the DOM (to hide the loading text)
-uuid = { version = "1.23.4", features = ["v4", "js"] }
+uuid = { version = "1.23.4", features = ["v4", "js", "serde"] }
 chacha20 = { version = "0.10.1" }
 
 [lints]
 workspace = true
-

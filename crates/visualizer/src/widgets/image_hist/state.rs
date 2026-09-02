@@ -3,7 +3,7 @@ use std::path::Path;
 
 use intensity::histogram::Histogram;
 
-use crate::widgets::{image_hist::models::LoadedImage, transforms_panel::AppliedTransform};
+use crate::widgets::image_hist::models::LoadedImage;
 
 use super::load_image::load_gray_image;
 
@@ -62,20 +62,17 @@ impl ImageHistState {
 
     pub fn restore(&mut self) {
         self.reload_image();
-        for transform in &mut self.config.transforms {
-            transform.op.restore_state();
-        }
     }
 
     fn set_images(&mut self, original_image: image::GrayImage) {
-        let image = LoadedImage::from_original(original_image, &self.config.transforms);
+        let image = LoadedImage::from_original(original_image, &self.config.pipeline);
         self.runtime.image = ImageLoadState::Loaded(Box::new(image));
         self.runtime.texture = None;
     }
 
     pub(super) fn apply_transforms(&mut self) {
         if let ImageLoadState::Loaded(image) = &mut self.runtime.image {
-            image.retransform(&self.config.transforms);
+            image.retransform(&self.config.pipeline);
             self.runtime.texture = None;
         }
     }
@@ -131,9 +128,5 @@ impl ImageHistState {
 
     pub(super) fn set_transforms_viewport_pos(&mut self, pos: egui::Pos2) {
         self.view.transforms_viewport_pos = Some(pos);
-    }
-
-    pub(super) fn transforms_mut(&mut self) -> &mut Vec<AppliedTransform> {
-        &mut self.config.transforms
     }
 }

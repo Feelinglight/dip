@@ -196,7 +196,10 @@ impl<'a> ImageHist<'a> {
                     self.state.set_transforms_viewport_pos(outer_rect.min);
                 }
 
-                let transforms_panel = TransformsPanel::new(self.state.transforms_mut());
+                let transforms_panel = TransformsPanel::new(
+                    &mut self.state.config.pipeline,
+                    &mut self.state.runtime.transform_editor_cache,
+                );
                 if ui.add(transforms_panel).changed() {
                     self.state.apply_transforms();
                 }

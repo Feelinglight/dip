@@ -1,6 +1,8 @@
 use egui_plot::{Legend, Line, Plot, PlotPoints};
+use intensity::log_transform::LogTransformParams;
+use uuid::Uuid;
 
-use super::data::LogTransformData;
+use crate::widgets::transforms_panel::TransformEditorCache;
 
 const PLOT_WIDTH: f32 = 200.;
 const PLOT_HEIGHT: f32 = 200.;
@@ -39,7 +41,9 @@ fn correct_log_base(current: f64, prev: f64) -> f64 {
 
 pub fn show_log_transform_controls(
     ui: &mut egui::Ui,
-    log_transform_data: &mut LogTransformData,
+    step_id: Uuid,
+    log_transform_data: &mut LogTransformParams,
+    cache: &mut TransformEditorCache,
     changed: &mut bool,
 ) {
     let mut log_base = log_transform_data.log_base();
@@ -67,7 +71,7 @@ pub fn show_log_transform_controls(
                 log_base = slider_internal_to_log_base(internal_log_base, log_base_max);
                 log_base = correct_log_base(log_base, log_transform_data.log_base());
 
-                log_transform_data.set_parameters(constant, log_base);
+                *log_transform_data = LogTransformParams::new(constant, log_base);
                 *changed = true;
             }
 
@@ -76,12 +80,12 @@ pub fn show_log_transform_controls(
                 .add(egui::Slider::new(&mut constant, 1.0..=15.))
                 .changed()
             {
-                log_transform_data.set_parameters(constant, log_base);
+                *log_transform_data = LogTransformParams::new(constant, log_base);
                 *changed = true;
             }
 
             if ui.button("Сбросить").clicked() {
-                log_transform_data.reset_parameters();
+                log_transform_data.reset();
                 *changed = true;
             }
         });
@@ -97,7 +101,7 @@ pub fn show_log_transform_controls(
             .show(ui, |plot_ui| {
                 plot_ui.line(Line::new(
                     "График",
-                    PlotPoints::Borrowed(log_transform_data.plot_points()),
+                    PlotPoints::Borrowed(cache.log_points(step_id, log_transform_data)),
                 ));
             });
     });

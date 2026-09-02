@@ -1,21 +1,26 @@
 use egui::{Panel, ScrollArea, Widget};
 
+use crate::pipeline::Pipeline;
+
+use super::TransformEditorCache;
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
-use super::transforms::AppliedTransform;
+use super::available_transforms_tree::transform_kind_label;
 use super::transforms::show_transform_controls;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
-    transforms: &'a mut Vec<AppliedTransform>,
+    pipeline: &'a mut Pipeline,
+    cache: &'a mut TransformEditorCache,
     changed: bool,
 }
 
 impl<'a> TransformsPanel<'a> {
-    pub fn new(transforms: &'a mut Vec<AppliedTransform>) -> Self {
+    pub fn new(pipeline: &'a mut Pipeline, cache: &'a mut TransformEditorCache) -> Self {
         Self {
             id_salt: None,
-            transforms,
+            pipeline,
+            cache,
             changed: false,
         }
     }
@@ -40,14 +45,14 @@ impl Widget for TransformsPanel<'_> {
                         let clear_image_button =
                             egui::Button::image(egui::include_image!("../icons/clear-image.png"));
                         if ui.add(clear_image_button).clicked() {
-                            self.transforms.clear();
+                            self.pipeline.clear();
                             self.changed = true;
                         }
                     });
 
                     ui.separator();
 
-                    show_applied_transforms(ui, self.transforms, &mut self.changed);
+                    show_applied_transforms(ui, self.pipeline, &mut self.changed);
                 })
                 .response;
 
@@ -60,7 +65,7 @@ impl Widget for TransformsPanel<'_> {
                     ui.separator();
 
                     show_available_transforms(ui, |transform_kind| {
-                        self.transforms.push(AppliedTransform::new(transform_kind));
+                        self.pipeline.add(transform_kind);
                         self.changed = true;
                     })
                 })
@@ -102,12 +107,25 @@ impl Widget for TransformsPanel<'_> {
 
 impl TransformsPanel<'_> {
     fn show_applied_transforms(&mut self, ui: &mut egui::Ui) {
-        for (idx, transform) in self.transforms.iter_mut().enumerate() {
-            ui.push_id(transform.id, |ui| {
-                ui.add_enabled_ui(transform.is_active(), |ui| {
-                    ui.heading(format!("{}. {}", idx + 1, transform.op.kind().name()));
+        self.cache.retain_pipeline_steps(self.pipeline);
 
-                    show_transform_controls(ui, &mut transform.op, &mut self.changed);
+        for (idx, step) in self.pipeline.steps_mut_for_params().iter_mut().enumerate() {
+            let step_id = step.id();
+            ui.push_id(step_id, |ui| {
+                ui.add_enabled_ui(step.is_active(), |ui| {
+                    ui.heading(format!(
+                        "{}. {}",
+                        idx + 1,
+                        transform_kind_label(step.transform().kind())
+                    ));
+
+                    show_transform_controls(
+                        ui,
+                        step_id,
+                        step.transform_mut(),
+                        self.cache,
+                        &mut self.changed,
+                    );
                 });
                 ui.separator();
             });

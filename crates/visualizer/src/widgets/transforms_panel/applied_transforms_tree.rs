@@ -1,22 +1,28 @@
 use egui::Label;
 use egui_ltreeview::{DirPosition, NodeBuilder};
+use uuid::Uuid;
 
-use super::transforms::AppliedTransform;
+use crate::pipeline::{Pipeline, PipelineStep};
+
+use super::available_transforms_tree::transform_kind_label;
 
 enum TransformContextActions {
-    Enable(usize),
-    Disable(usize),
-    Delete(usize),
+    Enable(Uuid),
+    Disable(Uuid),
+    Delete(Uuid),
 }
 
-const GROUP_1_ID: usize = 0;
-const FIRST_TRANSFORM_ID: usize = 1;
+#[derive(Clone, Copy, Debug, Eq, Hash, PartialEq, serde::Deserialize, serde::Serialize)]
+enum AppliedTransformNodeId {
+    Root,
+    Step(Uuid),
+}
 
 /// Отобразить примененные преобразования в виде дерева
 /// Может менять преобразования в векторе местами и изменять сами преобразования
 pub fn show_applied_transforms(
     ui: &mut egui::Ui,
-    transforms: &mut Vec<AppliedTransform>,
+    pipeline: &mut Pipeline,
     changed: &mut bool,
 ) -> egui::Response {
     let mut context_menu_actions = Vec::<TransformContextActions>::new();
@@ -26,15 +32,15 @@ pub fn show_applied_transforms(
         .allow_multi_selection(false)
         .allow_drag_and_drop(true)
         .show(ui, |builder| {
-            builder.dir(GROUP_1_ID, "Группа 1");
-            for (idx, transform) in transforms.iter().enumerate() {
-                let node_id = idx + FIRST_TRANSFORM_ID;
+            builder.dir(AppliedTransformNodeId::Root, "Группа 1");
+            for (idx, step) in pipeline.steps().iter().enumerate() {
+                let node_id = AppliedTransformNodeId::Step(step.id());
                 let node = NodeBuilder::leaf(node_id)
                     .label_ui(|ui| {
-                        show_transform_node(ui, node_id, transform);
+                        show_transform_node(ui, idx, step);
                     })
                     .context_menu(|ui| {
-                        show_context_menu(ui, node_id, &mut context_menu_actions);
+                        show_context_menu(ui, step.id(), &mut context_menu_actions);
                     });
                 builder.node(node);
             }
@@ -44,14 +50,16 @@ pub fn show_applied_transforms(
     for action in &actions {
         match action {
             egui_ltreeview::Action::Move(dnd) => {
-                if let Some(source) = dnd.source.first() {
-                    move_transform(*source, dnd.target, dnd.position, transforms);
-                    *changed = true;
+                if let Some(AppliedTransformNodeId::Step(source)) = dnd.source.first()
+                    && let Some(target_index) =
+                        target_index_for_position(dnd.target, dnd.position, pipeline)
+                {
+                    *changed |= pipeline.move_step(*source, target_index);
                 }
             }
             egui_ltreeview::Action::Activate(activate) => {
-                if let Some(node_id) = activate.selected.first() {
-                    toggle_transform_active(*node_id, transforms);
+                if let Some(AppliedTransformNodeId::Step(step_id)) = activate.selected.first() {
+                    pipeline.toggle(*step_id);
                     *changed = true;
                 }
             }
@@ -60,164 +68,77 @@ pub fn show_applied_transforms(
     }
 
     for action in context_menu_actions {
-        apply_action(&action, transforms);
+        apply_action(&action, pipeline);
         *changed = true;
     }
 
     response
 }
 
-fn show_transform_node(ui: &mut egui::Ui, node_id: usize, transform: &AppliedTransform) {
+fn show_transform_node(ui: &mut egui::Ui, idx: usize, step: &PipelineStep) {
     ui.add_enabled(
-        transform.is_active(),
-        Label::new(format!("{}. {}", node_id, transform.op.kind().name())).selectable(false),
+        step.is_active(),
+        Label::new(format!(
+            "{}. {}",
+            idx + 1,
+            transform_kind_label(step.transform().kind())
+        ))
+        .selectable(false),
     );
 }
 
-fn show_context_menu(
-    ui: &mut egui::Ui,
-    node_id: usize,
-    actions: &mut Vec<TransformContextActions>,
-) {
+fn show_context_menu(ui: &mut egui::Ui, step_id: Uuid, actions: &mut Vec<TransformContextActions>) {
     if ui.button("Включить").clicked() {
-        actions.push(TransformContextActions::Enable(node_id));
+        actions.push(TransformContextActions::Enable(step_id));
         ui.close();
     }
     if ui.button("Выключить").clicked() {
-        actions.push(TransformContextActions::Disable(node_id));
+        actions.push(TransformContextActions::Disable(step_id));
         ui.close();
     }
     ui.separator();
     if ui.button("Удалить").clicked() {
-        actions.push(TransformContextActions::Delete(node_id));
+        actions.push(TransformContextActions::Delete(step_id));
         ui.close();
     }
 }
 
-fn apply_action(action: &TransformContextActions, transforms: &mut Vec<AppliedTransform>) {
+fn apply_action(action: &TransformContextActions, pipeline: &mut Pipeline) {
     match *action {
-        TransformContextActions::Enable(node_id) => {
-            activate_transform(node_id, transforms);
+        TransformContextActions::Enable(step_id) => {
+            pipeline.activate(step_id);
         }
-        TransformContextActions::Disable(node_id) => {
-            deactivate_transform(node_id, transforms);
+        TransformContextActions::Disable(step_id) => {
+            pipeline.deactivate(step_id);
         }
-        TransformContextActions::Delete(node_id) => {
-            delete_transform(node_id, transforms);
+        TransformContextActions::Delete(step_id) => {
+            pipeline.remove(step_id);
         }
     }
 }
 
-fn move_transform<T>(
-    moved_node_idx: usize,
-    target_dir: usize,
-    position_in_target_dir: DirPosition<usize>,
-    transforms: &mut [T],
-) {
+fn target_index_for_position(
+    target_dir: AppliedTransformNodeId,
+    position_in_target_dir: DirPosition<AppliedTransformNodeId>,
+    pipeline: &Pipeline,
+) -> Option<usize> {
     // 1 - Группу нельзя переносить. 2 - Переносить можно только внутри первой группы
-    if moved_node_idx == GROUP_1_ID || target_dir != GROUP_1_ID {
-        return;
+    if target_dir != AppliedTransformNodeId::Root {
+        return None;
     }
 
-    // Элемент в векторе преобразований, который нужно перенести
-    let applied_vec_source_idx = moved_node_idx - 1;
-
-    // Место, на котором должен оказаться перемещаемый элемент в векторе преобразований
-    let applied_vec_target_idx = match position_in_target_dir {
-        DirPosition::First => 1,
-        DirPosition::Before(node_id) => node_id,
-        DirPosition::After(node_id) => node_id + 1,
-        DirPosition::Last => transforms.len() + 1,
-    } - 1;
-
-    if applied_vec_source_idx == applied_vec_target_idx {
-        return;
-    }
-
-    if applied_vec_source_idx < applied_vec_target_idx {
-        transforms
-            .get_mut(applied_vec_source_idx..applied_vec_target_idx)
-            .expect(
-                "Слайс для перемещения элемента, \
-                    когда source_idx < target_idx, вычислен неверно",
-            )
-            .rotate_left(1);
-    } else {
-        transforms
-            .get_mut(applied_vec_target_idx..applied_vec_source_idx + 1)
-            .expect(
-                "Слайс для перемещения элемента, \
-                    когда target_idx < source_idx, вычислен неверно",
-            )
-            .rotate_right(1);
+    match position_in_target_dir {
+        DirPosition::First => Some(0),
+        DirPosition::Before(AppliedTransformNodeId::Step(id)) => step_index(pipeline, id),
+        DirPosition::After(AppliedTransformNodeId::Step(id)) => {
+            step_index(pipeline, id).map(|idx| idx + 1)
+        }
+        DirPosition::Last => Some(pipeline.steps().len()),
+        DirPosition::Before(AppliedTransformNodeId::Root)
+        | DirPosition::After(AppliedTransformNodeId::Root) => None,
     }
 }
 
-fn get_node_mut(
-    node_id: usize,
-    transforms: &mut [AppliedTransform],
-) -> Option<&mut AppliedTransform> {
-    if node_id == GROUP_1_ID {
-        None
-    } else {
-        Some(
-            transforms
-                .get_mut(node_id - FIRST_TRANSFORM_ID)
-                .expect("ID ноды превышает количество преобразований в векторе"),
-        )
-    }
-}
-
-fn toggle_transform_active(node_id: usize, transforms: &mut [AppliedTransform]) {
-    if let Some(node) = get_node_mut(node_id, transforms) {
-        node.toggle_active();
-    }
-}
-
-fn activate_transform(node_id: usize, transforms: &mut [AppliedTransform]) {
-    if let Some(node) = get_node_mut(node_id, transforms) {
-        node.activate();
-    }
-}
-
-fn deactivate_transform(node_id: usize, transforms: &mut [AppliedTransform]) {
-    if let Some(node) = get_node_mut(node_id, transforms) {
-        node.deactivate();
-    }
-}
-
-fn delete_transform(node_id: usize, transforms: &mut Vec<AppliedTransform>) {
-    if node_id != GROUP_1_ID {
-        let vec_idx = node_id - FIRST_TRANSFORM_ID;
-        assert!(
-            vec_idx <= transforms.len(),
-            "ID ноды превышает количество преобразований в векторе"
-        );
-        transforms.remove(vec_idx);
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn make_test_transforms() -> Vec<usize> {
-        vec![1, 2, 3, 4]
-    }
-
-    #[test]
-    fn move_transform_first() {
-        let moved_node_idx = 4;
-
-        let mut transforms = make_test_transforms();
-        move_transform(moved_node_idx, 0, DirPosition::First, &mut transforms);
-
-        let mut expected = make_test_transforms();
-        expected
-            .get_mut(0..moved_node_idx)
-            .expect("Выход за границы вектора")
-            .rotate_right(1);
-
-        assert_eq!(transforms, expected);
-    }
+fn step_index(pipeline: &Pipeline, id: Uuid) -> Option<usize> {
+    pipeline.steps().iter().position(|step| step.id() == id)
 }

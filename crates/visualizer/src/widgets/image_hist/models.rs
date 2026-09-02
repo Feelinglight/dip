@@ -3,13 +3,13 @@ use image::GrayImage;
 use intensity::histogram::{Histogram, histogram};
 
 use super::image_viewport::ImageViewportState;
-use crate::widgets::transforms_panel::AppliedTransform;
+use crate::{pipeline::Pipeline, widgets::transforms_panel::TransformEditorCache};
 
 /// Сохраняется между перезапусками приложения и относится только к бизнес логике приложения
 #[derive(serde::Deserialize, serde::Serialize, Default)]
 pub(super) struct ImageHistConfig {
     pub(super) image_path: String,
-    pub(super) transforms: Vec<AppliedTransform>,
+    pub(super) pipeline: Pipeline,
 }
 
 pub(super) struct LoadedImage {
@@ -19,11 +19,8 @@ pub(super) struct LoadedImage {
 }
 
 impl LoadedImage {
-    pub(super) fn from_original(
-        original: GrayImage,
-        transforms: &[AppliedTransform],
-    ) -> LoadedImage {
-        let (transformed, histogram) = Self::transform_original(&original, transforms);
+    pub(super) fn from_original(original: GrayImage, pipeline: &Pipeline) -> LoadedImage {
+        let (transformed, histogram) = Self::transform_original(&original, pipeline);
         Self {
             original,
             transformed,
@@ -31,8 +28,8 @@ impl LoadedImage {
         }
     }
 
-    pub(super) fn retransform(&mut self, transforms: &[AppliedTransform]) {
-        (self.transformed, self.histogram) = Self::transform_original(&self.original, transforms);
+    pub(super) fn retransform(&mut self, pipeline: &Pipeline) {
+        (self.transformed, self.histogram) = Self::transform_original(&self.original, pipeline);
     }
 
     pub(super) fn transformed(&self) -> &GrayImage {
@@ -43,14 +40,9 @@ impl LoadedImage {
         &self.histogram
     }
 
-    fn transform_original(
-        original: &GrayImage,
-        transforms: &[AppliedTransform],
-    ) -> (GrayImage, Histogram) {
+    fn transform_original(original: &GrayImage, pipeline: &Pipeline) -> (GrayImage, Histogram) {
         let mut transformed = original.clone();
-        for transform in transforms {
-            transform.apply_if_active(&mut transformed);
-        }
+        pipeline.apply_to(&mut transformed);
         let histogram = histogram(&transformed);
         (transformed, histogram)
     }
@@ -66,6 +58,7 @@ pub(super) enum ImageLoadState {
 pub(super) struct ImageHistRuntimeState {
     pub(super) image: ImageLoadState,
     pub(super) texture: Option<TextureHandle>,
+    pub(super) transform_editor_cache: TransformEditorCache,
 }
 
 impl Default for ImageHistRuntimeState {
@@ -73,6 +66,7 @@ impl Default for ImageHistRuntimeState {
         Self {
             image: ImageLoadState::Empty,
             texture: None,
+            transform_editor_cache: TransformEditorCache::default(),
         }
     }
 }
