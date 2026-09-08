@@ -29,7 +29,12 @@ impl ImageHistState {
             config: ImageHistConfig {
                 image_path: path
                     .to_str()
-                    .expect("Путь к изображению не валиден")
+                    .ok_or_else(|| {
+                        format!(
+                            "Ошибка. Не удалось раскодировать путь к изображению: {}",
+                            path.display()
+                        )
+                    })?
                     .to_string(),
                 ..Default::default()
             },
