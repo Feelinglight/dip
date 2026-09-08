@@ -2,8 +2,8 @@ use std::collections::{HashMap, HashSet};
 
 use egui_plot::PlotPoint;
 use intensity::{
-    gamma_correction::{GammaCorrect, GammaCorrectionParams},
-    log_transform::{LogTransform, LogTransformParams},
+    gamma_correction::{GammaCorrectionParams, gamma_correct_single},
+    log_transform::{LogTransformParams, log_transform_single},
 };
 use uuid::Uuid;
 
@@ -60,7 +60,7 @@ impl CurveCache {
 
     fn gamma(params: &GammaCorrectionParams) -> Self {
         let points = calculate_points(Self::GAMMA_POINTS_COUNT, |x| {
-            image::GrayImage::gamma_correct_single(x, params, 1.)
+            gamma_correct_single(x, params, 1.)
         });
         Self::Gamma {
             params_snapshot: params.clone(),
@@ -70,7 +70,7 @@ impl CurveCache {
 
     fn log(params: &LogTransformParams) -> Self {
         let points = calculate_points(Self::LOG_POINTS_COUNT, |x| {
-            image::GrayImage::log_transform_single(x, params, 1.)
+            log_transform_single(x, params, 1.)
         });
         Self::Log {
             params_snapshot: params.clone(),

@@ -43,15 +43,15 @@ impl GammaCorrectionParams {
     }
 }
 
+#[inline]
+#[must_use]
+pub fn gamma_correct_single(value: f64, params: &GammaCorrectionParams, max_value: f64) -> f64 {
+    let powered = (value / max_value).powf(params.gamma);
+    (params.constant * powered).min(1.) * max_value
+}
+
 pub trait GammaCorrect: Sized {
     fn gamma_correct_inplace(&mut self, params: &GammaCorrectionParams);
-
-    #[inline]
-    #[must_use]
-    fn gamma_correct_single(value: f64, params: &GammaCorrectionParams, max_value: f64) -> f64 {
-        let powered = (value / max_value).powf(params.gamma);
-        (params.constant * powered).min(1.) * max_value
-    }
 
     #[must_use]
     fn gamma_correct(mut self, params: &GammaCorrectionParams) -> Self {
@@ -70,7 +70,7 @@ where
 
         for sample in self.iter_mut() {
             let fsample = (*sample).to_f64().unwrap_or(0.);
-            let corrected = Self::gamma_correct_single(fsample, params, max_value).round();
+            let corrected = gamma_correct_single(fsample, params, max_value).round();
             *sample = NumCast::from(corrected).unwrap_or(P::Subpixel::DEFAULT_MIN_VALUE);
         }
     }

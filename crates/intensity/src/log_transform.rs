@@ -47,16 +47,16 @@ impl LogTransformParams {
     }
 }
 
+#[inline]
+#[must_use]
+pub fn log_transform_single(value: f64, params: &LogTransformParams, max_value: f64) -> f64 {
+    // log_norm всегда будет от 0 до 1
+    let log_norm = (value / max_value * (params.log_base - 1.) + 1.).log(params.log_base);
+    max_value * (params.constant * log_norm).min(1.)
+}
+
 pub trait LogTransform: Sized {
     fn log_transform_inplace(&mut self, params: &LogTransformParams);
-
-    #[inline]
-    #[must_use]
-    fn log_transform_single(value: f64, params: &LogTransformParams, max_value: f64) -> f64 {
-        // log_norm всегда будет от 0 до 1
-        let log_norm = (value / max_value * (params.log_base - 1.) + 1.).log(params.log_base);
-        max_value * (params.constant * log_norm).min(1.)
-    }
 
     #[must_use]
     fn log_transform(mut self, params: &LogTransformParams) -> Self {
@@ -75,7 +75,7 @@ where
 
         for sample in self.iter_mut() {
             let fsample = (*sample).to_f64().unwrap_or(0.);
-            let corrected = Self::log_transform_single(fsample, params, max_value).round();
+            let corrected = log_transform_single(fsample, params, max_value).round();
             *sample = NumCast::from(corrected).unwrap_or(P::Subpixel::DEFAULT_MIN_VALUE);
         }
     }
