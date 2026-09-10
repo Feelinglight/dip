@@ -29,13 +29,15 @@ impl DipPlotsApp {
 
         egui_extras::install_image_loaders(&cc.egui_ctx);
 
-        let mut tree: DockState<tabs::ImageHistTab> = serde_json::from_str(&config.tabs_state)
-            .ok()
-            .unwrap_or_else(|| DockState::new(vec![tabs::ImageHistTab::default()]));
-
-        for (_, image_hist_tab) in tree.iter_all_tabs_mut() {
-            image_hist_tab.state.restore();
-        }
+        let tree = serde_json::from_str(&config.tabs_state).map_or_else(
+            |_| DockState::new(vec![tabs::ImageHistTab::default()]),
+            |mut t: DockState<tabs::ImageHistTab>| {
+                for (_, image_hist_tab) in t.iter_all_tabs_mut() {
+                    image_hist_tab.restore();
+                }
+                t
+            },
+        );
 
         let image_picker = ImagePicker::new(config.last_image_path.as_ref());
 

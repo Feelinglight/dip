@@ -4,8 +4,8 @@ use crate::widgets::image_hist::{ImageHist, ImageHistState};
 
 #[derive(serde::Deserialize, serde::Serialize)]
 pub struct ImageHistTab {
-    pub id: egui::Id,
-    pub state: ImageHistState,
+    id: egui::Id,
+    state: ImageHistState,
 }
 
 impl Default for ImageHistTab {
@@ -23,6 +23,9 @@ impl ImageHistTab {
             id: egui::Id::new(uuid::Uuid::new_v4()),
             state,
         }
+    }
+    pub fn restore(&mut self) {
+        self.state.restore();
     }
 }
 
