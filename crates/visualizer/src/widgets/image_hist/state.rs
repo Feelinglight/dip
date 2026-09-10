@@ -48,12 +48,16 @@ impl ImageHistState {
 
     /// Загружает изображение по текущему установленному пути и обновляет его гистограмму
     pub(super) fn reload_image(&mut self) {
+        if self.config.image_path.is_empty() {
+            self.runtime.image = ImageLoadState::Empty;
+            self.runtime.texture = None;
+            return;
+        }
+
         let image = load_gray_image(Path::new(&self.config.image_path), None);
 
         match image {
-            Ok(img) => {
-                self.set_images(img);
-            }
+            Ok(img) => self.set_images(img),
             Err(message) => {
                 self.runtime.image = ImageLoadState::Failed(message);
                 self.runtime.texture = None;
