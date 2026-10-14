@@ -1,5 +1,6 @@
 use egui_plot::{Legend, Line, Plot, PlotPoints};
 use intensity::gamma_correction::GammaCorrectionParams;
+use log::error;
 use uuid::Uuid;
 
 use crate::widgets::transforms_panel::TransformEditorCache;
@@ -21,6 +22,16 @@ fn gamma_to_slider_internal(gamma: f64, gamma_max: f64) -> f64 {
         gamma
     } else {
         1. + ((gamma - 1.) / gamma_max).sqrt()
+    }
+}
+
+fn new_gamma_correction_params(constant: f64, gamma: f64) -> GammaCorrectionParams {
+    match GammaCorrectionParams::try_new(constant, gamma) {
+        Ok(params) => params,
+        Err(err) => {
+            error!("Ошибка создания параметров гамма коррекции: {err}");
+            GammaCorrectionParams::default()
+        }
     }
 }
 
@@ -53,7 +64,7 @@ pub fn show_gamma_controls(
                 .changed()
             {
                 gamma = slider_internal_to_gamma(internal_gamma, gamma_max);
-                *gamma_data = GammaCorrectionParams::new(constant, gamma);
+                *gamma_data = new_gamma_correction_params(constant, gamma);
                 *changed = true;
             }
 
@@ -62,7 +73,7 @@ pub fn show_gamma_controls(
                 .add(egui::Slider::new(&mut constant, 1.0..=15.))
                 .changed()
             {
-                *gamma_data = GammaCorrectionParams::new(constant, gamma);
+                *gamma_data = new_gamma_correction_params(constant, gamma);
                 *changed = true;
             }
 

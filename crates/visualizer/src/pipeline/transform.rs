@@ -1,3 +1,4 @@
+use log::error;
 use std::ops::{Deref, DerefMut};
 
 use image::{ImageBuffer, Pixel};
@@ -91,12 +92,29 @@ struct LogTransformParamsDef {
 
 impl From<GammaCorrectionParamsDef> for GammaCorrectionParams {
     fn from(params: GammaCorrectionParamsDef) -> Self {
-        Self::new(params.constant, params.gamma)
+        match Self::try_new(params.constant, params.gamma) {
+            Ok(params) => params,
+            Err(err) => {
+                error!(
+                    "не удалось восстановить параметры гамма коррекции: {err}. Используются дефолты"
+                );
+                GammaCorrectionParams::default()
+            }
+        }
     }
 }
 
 impl From<LogTransformParamsDef> for LogTransformParams {
     fn from(params: LogTransformParamsDef) -> Self {
-        Self::new(params.constant, params.log_base)
+        match Self::try_new(params.constant, params.log_base) {
+            Ok(params) => params,
+            Err(err) => {
+                error!(
+                    "не удалось восстановить параметры логарифмического преобразования: \
+                    {err}. Используются дефолты",
+                );
+                LogTransformParams::default()
+            }
+        }
     }
 }

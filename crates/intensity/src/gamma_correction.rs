@@ -1,7 +1,36 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    error::Error,
+    fmt::{self},
+    ops::{Deref, DerefMut},
+};
 
 use image::{ImageBuffer, Pixel, Primitive};
 use num_traits::{NumCast, ToPrimitive};
+
+#[derive(Debug)]
+pub enum GammaCorrectionError {
+    InvalidConstant { constant: f64 },
+    InvalidGamma { gamma: f64 },
+}
+
+impl Error for GammaCorrectionError {}
+
+impl fmt::Display for GammaCorrectionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            GammaCorrectionError::InvalidConstant { constant } => write!(
+                f,
+                "значение константы должно быть больше либо равно 1. Получено {constant}",
+            ),
+            GammaCorrectionError::InvalidGamma { gamma } => {
+                write!(
+                    f,
+                    "значение гамма должно быть больше нуля. Получено {gamma}",
+                )
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct GammaCorrectionParams {
@@ -11,21 +40,24 @@ pub struct GammaCorrectionParams {
 
 impl Default for GammaCorrectionParams {
     fn default() -> Self {
-        Self::new(1., 1.)
+        Self::try_new(1., 1.).expect("дефолтные значения параметров всегда должны быть валидны")
     }
 }
 
 impl GammaCorrectionParams {
-    /// Creates gamma correction parameters.
+    /// # Errors
     ///
-    /// # Panics
-    ///
-    /// Panics if `constant` is less than `1.0` or `gamma` is not positive.
-    #[must_use]
-    pub fn new(constant: f64, gamma: f64) -> Self {
-        assert!(constant >= 1., "Константа должна быть больше, либо равна 1");
-        assert!(gamma > 0., "Коеффициенты гамма должен быть больше 0");
-        Self { constant, gamma }
+    /// Возвращает [`GammaCorrectionError::InvalidConstant`], если ``constant`` меньше 1.
+    /// Возвращает [`GammaCorrectionError::InvalidGamma`], если ``gamma`` меньше
+    /// либо равно 0
+    pub fn try_new(constant: f64, gamma: f64) -> Result<Self, GammaCorrectionError> {
+        if !constant.is_finite() || constant < 1. {
+            Err(GammaCorrectionError::InvalidConstant { constant })
+        } else if !gamma.is_finite() || gamma <= 0. {
+            Err(GammaCorrectionError::InvalidGamma { gamma })
+        } else {
+            Ok(Self { constant, gamma })
+        }
     }
 
     #[must_use]

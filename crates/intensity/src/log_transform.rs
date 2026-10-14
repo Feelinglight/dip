@@ -1,7 +1,38 @@
-use std::ops::{Deref, DerefMut};
+use std::{
+    error::Error,
+    fmt,
+    ops::{Deref, DerefMut},
+};
 
 use image::{ImageBuffer, Pixel, Primitive};
 use num_traits::{NumCast, ToPrimitive};
+
+#[derive(Debug)]
+pub enum LogTransformError {
+    InvalidConstant { constant: f64 },
+    InvalidLogBase { log_base: f64 },
+}
+
+impl Error for LogTransformError {}
+
+impl fmt::Display for LogTransformError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogTransformError::InvalidConstant { constant } => {
+                write!(
+                    f,
+                    "значение константы должно быть больше либо равно 1. Получено {constant}"
+                )
+            }
+            LogTransformError::InvalidLogBase { log_base } => {
+                write!(
+                    f,
+                    "основание логарифма должно быть больше 0 и не равно 1. Получено {log_base}"
+                )
+            }
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct LogTransformParams {
@@ -11,25 +42,24 @@ pub struct LogTransformParams {
 
 impl Default for LogTransformParams {
     fn default() -> Self {
-        Self::new(1., 0.99)
+        Self::try_new(1., 0.99).expect("дефолтные значения параметров всегда должны быть валидны")
     }
 }
 
 impl LogTransformParams {
-    /// Creates log transform parameters.
+    /// # Errors
     ///
-    /// # Panics
-    ///
-    /// Panics if `constant` is less than `1.0`, or if `log_base` is not
-    /// positive or is equal to `1.0`.
-    #[must_use]
-    pub fn new(constant: f64, log_base: f64) -> Self {
-        assert!(constant >= 1., "Константа должна быть больше, либо равна 1");
-        assert!(
-            log_base > 0. && (log_base - 1.).abs() > 0.000_001,
-            "Основание логарифма должно быть больше 0 и не равно 1"
-        );
-        Self { constant, log_base }
+    /// Возвращает [`LogTransformError::InvalidConstant`], если ``constant`` меньше 1.
+    /// Возвращает [`LogTransformError::InvalidLogBase`], если ``log_base`` меньше или равно 0,
+    /// или равно 1.
+    pub fn try_new(constant: f64, log_base: f64) -> Result<Self, LogTransformError> {
+        if !constant.is_finite() || constant < 1. {
+            Err(LogTransformError::InvalidConstant { constant })
+        } else if !log_base.is_finite() || log_base <= 0. || (log_base - 1.).abs() < 0.000_001 {
+            Err(LogTransformError::InvalidLogBase { log_base })
+        } else {
+            Ok(Self { constant, log_base })
+        }
     }
 
     #[must_use]
@@ -50,7 +80,7 @@ impl LogTransformParams {
 #[inline]
 #[must_use]
 pub fn log_transform_single(value: f64, params: &LogTransformParams, max_value: f64) -> f64 {
-    // log_norm всегда будет от 0 до 1
+    // log_norm всегда от 0 до 1
     let log_norm = (value / max_value * (params.log_base - 1.) + 1.).log(params.log_base);
     max_value * (params.constant * log_norm).min(1.)
 }

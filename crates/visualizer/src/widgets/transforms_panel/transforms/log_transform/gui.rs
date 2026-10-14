@@ -1,5 +1,6 @@
 use egui_plot::{Legend, Line, Plot, PlotPoints};
 use intensity::log_transform::LogTransformParams;
+use log::error;
 use uuid::Uuid;
 
 use crate::widgets::transforms_panel::TransformEditorCache;
@@ -39,6 +40,16 @@ fn correct_log_base(current: f64, prev: f64) -> f64 {
     }
 }
 
+fn new_log_transform_params(constant: f64, log_base: f64) -> LogTransformParams {
+    match LogTransformParams::try_new(constant, log_base) {
+        Ok(params) => params,
+        Err(err) => {
+            error!("Ошибка создания параметров логарифмического преобразования: {err}");
+            LogTransformParams::default()
+        }
+    }
+}
+
 pub fn show_log_transform_controls(
     ui: &mut egui::Ui,
     step_id: Uuid,
@@ -71,7 +82,7 @@ pub fn show_log_transform_controls(
                 log_base = slider_internal_to_log_base(internal_log_base, log_base_max);
                 log_base = correct_log_base(log_base, log_transform_data.log_base());
 
-                *log_transform_data = LogTransformParams::new(constant, log_base);
+                *log_transform_data = new_log_transform_params(constant, log_base);
                 *changed = true;
             }
 
@@ -80,7 +91,7 @@ pub fn show_log_transform_controls(
                 .add(egui::Slider::new(&mut constant, 1.0..=15.))
                 .changed()
             {
-                *log_transform_data = LogTransformParams::new(constant, log_base);
+                *log_transform_data = new_log_transform_params(constant, log_base);
                 *changed = true;
             }
 
