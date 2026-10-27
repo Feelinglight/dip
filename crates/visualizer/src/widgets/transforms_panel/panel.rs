@@ -6,7 +6,7 @@ use super::TransformPanelCache;
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
 use super::available_transforms_tree::transform_kind_label;
-use super::transforms::show_transform_controls;
+use super::transforms_ui::show_transform_controls;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
