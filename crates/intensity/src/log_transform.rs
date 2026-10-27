@@ -98,6 +98,7 @@ pub trait LogTransform: Sized {
 impl<P, Container> LogTransform for ImageBuffer<P, Container>
 where
     P: Pixel,
+    P::Subpixel: num_traits::PrimInt,
     Container: Deref<Target = [P::Subpixel]> + DerefMut,
 {
     fn log_transform_inplace(&mut self, params: &LogTransformParams) {

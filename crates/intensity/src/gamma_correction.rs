@@ -95,6 +95,7 @@ pub trait GammaCorrect: Sized {
 impl<P, Container> GammaCorrect for ImageBuffer<P, Container>
 where
     P: Pixel,
+    P::Subpixel: num_traits::PrimInt,
     Container: Deref<Target = [P::Subpixel]> + DerefMut,
 {
     fn gamma_correct_inplace(&mut self, params: &GammaCorrectionParams) {

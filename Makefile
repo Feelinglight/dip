@@ -18,3 +18,6 @@ web_dev: web_build
 web_release: web_build
 	# Сборка в папку dist
 	cd crates/visualizer && trunk build --release src/web/index.html
+
+test_lib:
+	cargo nextest run -p intensity
