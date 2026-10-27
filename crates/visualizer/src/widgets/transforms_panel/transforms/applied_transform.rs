@@ -1,4 +1,4 @@
-use crate::{pipeline::Transform, widgets::transforms_panel::TransformEditorCache};
+use crate::{pipeline::Transform, widgets::transforms_panel::TransformPanelCache};
 use uuid::Uuid;
 
 pub use super::gamma::show_gamma_controls;
@@ -8,7 +8,7 @@ pub fn show_transform_controls(
     ui: &mut egui::Ui,
     step_id: Uuid,
     transform: &mut Transform,
-    cache: &mut TransformEditorCache,
+    cache: &mut TransformPanelCache,
     changed: &mut bool,
 ) {
     match transform {

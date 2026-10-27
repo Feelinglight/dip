@@ -2,7 +2,7 @@ use egui::{Panel, ScrollArea, Widget};
 
 use crate::pipeline::Pipeline;
 
-use super::TransformEditorCache;
+use super::TransformPanelCache;
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
 use super::available_transforms_tree::transform_kind_label;
@@ -11,12 +11,12 @@ use super::transforms::show_transform_controls;
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
     pipeline: &'a mut Pipeline,
-    cache: &'a mut TransformEditorCache,
+    cache: &'a mut TransformPanelCache,
     changed: bool,
 }
 
 impl<'a> TransformsPanel<'a> {
-    pub fn new(pipeline: &'a mut Pipeline, cache: &'a mut TransformEditorCache) -> Self {
+    pub fn new(pipeline: &'a mut Pipeline, cache: &'a mut TransformPanelCache) -> Self {
         Self {
             id_salt: None,
             pipeline,

@@ -4,5 +4,5 @@ mod cache;
 mod panel;
 mod transforms;
 
-pub use cache::TransformEditorCache;
+pub use cache::TransformPanelCache;
 pub use panel::TransformsPanel;

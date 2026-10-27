@@ -10,7 +10,7 @@ use uuid::Uuid;
 use crate::pipeline::{Pipeline, PipelineStep};
 
 #[derive(Default)]
-pub struct TransformEditorCache {
+pub struct TransformPanelCache {
     curves: HashMap<Uuid, CurveCache>,
 }
 
@@ -25,7 +25,7 @@ pub enum CurveCache {
     },
 }
 
-impl TransformEditorCache {
+impl TransformPanelCache {
     pub fn gamma_points(&mut self, step_id: Uuid, params: &GammaCorrectionParams) -> &[PlotPoint] {
         let cache = self
             .curves
@@ -60,7 +60,7 @@ impl CurveCache {
 
     fn gamma(params: &GammaCorrectionParams) -> Self {
         let points = calculate_points(Self::GAMMA_POINTS_COUNT, |x| {
-            gamma_correct_single(x, params, 1.)
+            gamma_correct_single(x, params)
         });
         Self::Gamma {
             params_snapshot: params.clone(),
@@ -69,9 +69,7 @@ impl CurveCache {
     }
 
     fn log(params: &LogTransformParams) -> Self {
-        let points = calculate_points(Self::LOG_POINTS_COUNT, |x| {
-            log_transform_single(x, params, 1.)
-        });
+        let points = calculate_points(Self::LOG_POINTS_COUNT, |x| log_transform_single(x, params));
         Self::Log {
             params_snapshot: params.clone(),
             points,

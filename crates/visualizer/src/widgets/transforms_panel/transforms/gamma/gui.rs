@@ -3,7 +3,7 @@ use intensity::gamma_correction::GammaCorrectionParams;
 use log::error;
 use uuid::Uuid;
 
-use crate::widgets::transforms_panel::TransformEditorCache;
+use crate::widgets::transforms_panel::TransformPanelCache;
 
 const PLOT_WIDTH: f32 = 200.;
 const PLOT_HEIGHT: f32 = 200.;
@@ -39,7 +39,7 @@ pub fn show_gamma_controls(
     ui: &mut egui::Ui,
     step_id: Uuid,
     gamma_data: &mut GammaCorrectionParams,
-    cache: &mut TransformEditorCache,
+    cache: &mut TransformPanelCache,
     changed: &mut bool,
 ) {
     let mut gamma = gamma_data.gamma();

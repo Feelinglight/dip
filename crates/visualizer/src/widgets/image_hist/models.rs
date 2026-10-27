@@ -3,7 +3,7 @@ use image::GrayImage;
 use intensity::histogram::{Histogram, histogram};
 
 use super::image_viewport::ImageViewportState;
-use crate::{pipeline::Pipeline, widgets::transforms_panel::TransformEditorCache};
+use crate::{pipeline::Pipeline, widgets::transforms_panel::TransformPanelCache};
 
 /// Сохраняется между перезапусками приложения и относится только к бизнес логике приложения
 #[derive(serde::Deserialize, serde::Serialize, Default)]
@@ -58,7 +58,7 @@ pub(super) enum ImageLoadState {
 pub(super) struct ImageHistRuntimeState {
     pub(super) image: ImageLoadState,
     pub(super) texture: Option<TextureHandle>,
-    pub(super) transform_editor_cache: TransformEditorCache,
+    pub(super) transform_editor_cache: TransformPanelCache,
 }
 
 impl Default for ImageHistRuntimeState {
@@ -66,7 +66,7 @@ impl Default for ImageHistRuntimeState {
         Self {
             image: ImageLoadState::Empty,
             texture: None,
-            transform_editor_cache: TransformEditorCache::default(),
+            transform_editor_cache: TransformPanelCache::default(),
         }
     }
 }

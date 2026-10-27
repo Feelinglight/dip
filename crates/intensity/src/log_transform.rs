@@ -79,10 +79,10 @@ impl LogTransformParams {
 
 #[inline]
 #[must_use]
-pub fn log_transform_single(value: f64, params: &LogTransformParams, max_value: f64) -> f64 {
-    // log_norm всегда от 0 до 1
-    let log_norm = (value / max_value * (params.log_base - 1.) + 1.).log(params.log_base);
-    max_value * (params.constant * log_norm).min(1.)
+pub fn log_transform_single(value: f64, params: &LogTransformParams) -> f64 {
+    let value = value.clamp(0., 1.);
+    let log_norm = (value * (params.log_base - 1.) + 1.).log(params.log_base);
+    (params.constant * log_norm).min(1.)
 }
 
 pub trait LogTransform: Sized {
@@ -106,7 +106,9 @@ where
 
         for sample in self.iter_mut() {
             let fsample = (*sample).to_f64().unwrap_or(0.);
-            let corrected = log_transform_single(fsample, params, max_value).round();
+            let norm_fsample = fsample / max_value;
+
+            let corrected = (log_transform_single(norm_fsample, params) * max_value).round();
             *sample = NumCast::from(corrected).unwrap_or(P::Subpixel::DEFAULT_MIN_VALUE);
         }
     }
