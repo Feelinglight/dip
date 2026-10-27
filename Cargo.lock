@@ -1027,6 +1027,7 @@ dependencies = [
  "image",
  "intensity",
  "log",
+ "num-traits",
  "pollster",
  "rfd",
  "serde",

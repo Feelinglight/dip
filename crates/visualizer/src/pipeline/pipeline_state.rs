@@ -57,6 +57,7 @@ impl PipelineStep {
     pub fn apply_to<P, Container>(&self, image_buffer: &mut ImageBuffer<P, Container>)
     where
         P: Pixel,
+        P::Subpixel: num_traits::PrimInt,
         Container: Deref<Target = [P::Subpixel]> + DerefMut,
     {
         if self.active {
@@ -140,6 +141,7 @@ impl Pipeline {
     pub fn apply_to<P, Container>(&self, image_buffer: &mut ImageBuffer<P, Container>)
     where
         P: Pixel,
+        P::Subpixel: num_traits::PrimInt,
         Container: Deref<Target = [P::Subpixel]> + DerefMut,
     {
         for step in &self.steps {
