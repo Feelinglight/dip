@@ -1,12 +1,12 @@
 use egui::{Panel, ScrollArea, Widget};
 
 use crate::pipeline::Pipeline;
+use crate::widgets::transforms_panel::transforms::transform_name;
 
 use super::TransformPanelCache;
 use super::applied_transforms_tree::show_applied_transforms;
 use super::available_transforms_tree::show_available_transforms;
-use super::available_transforms_tree::transform_kind_label;
-use super::transforms_ui::show_transform_controls;
+use super::transforms::show_transform_controls;
 
 pub struct TransformsPanel<'a> {
     id_salt: Option<egui::IdSalt>,
@@ -116,7 +116,7 @@ impl TransformsPanel<'_> {
                     ui.heading(format!(
                         "{}. {}",
                         idx + 1,
-                        transform_kind_label(step.transform().kind())
+                        transform_name(step.transform().kind())
                     ));
 
                     show_transform_controls(

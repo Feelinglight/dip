@@ -2,6 +2,13 @@ use std::ops::{Deref, DerefMut};
 
 use image::{ImageBuffer, Pixel, Primitive};
 
+#[inline]
+#[must_use]
+pub fn negative_single(value: f64) -> f64 {
+    let value = value.clamp(0., 1.);
+    1. - value
+}
+
 pub trait Negative: Sized {
     fn negative_inplace(&mut self);
 

@@ -2,9 +2,10 @@ use egui::Label;
 use egui_ltreeview::{DirPosition, NodeBuilder};
 use uuid::Uuid;
 
-use crate::pipeline::{Pipeline, PipelineStep};
-
-use super::available_transforms_tree::transform_kind_label;
+use crate::{
+    pipeline::{Pipeline, PipelineStep},
+    widgets::transforms_panel::transforms::transform_name,
+};
 
 enum TransformContextActions {
     Enable(Uuid),
@@ -81,7 +82,7 @@ fn show_transform_node(ui: &mut egui::Ui, idx: usize, step: &PipelineStep) {
         Label::new(format!(
             "{}. {}",
             idx + 1,
-            transform_kind_label(step.transform().kind())
+            transform_name(step.transform().kind())
         ))
         .selectable(false),
     );

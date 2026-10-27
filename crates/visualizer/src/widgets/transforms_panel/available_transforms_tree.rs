@@ -1,6 +1,7 @@
-use egui_ltreeview::TreeViewBuilder;
-
-use crate::pipeline::{Transform, TransformKind};
+use crate::{
+    pipeline::{Transform, TransformKind},
+    widgets::transforms_panel::transforms::transform_name,
+};
 
 #[derive(Clone, Eq, PartialEq, Hash, serde::Serialize, serde::Deserialize, Debug)]
 enum TransformNodeId {
@@ -22,7 +23,7 @@ pub fn show_available_transforms(
         .show(ui, |builder| {
             builder.dir(TransformNodeId::IntensityDir, "Яркость");
             for kind in Transform::available_kinds() {
-                build_leaf(builder, *kind);
+                builder.leaf(TransformNodeId::Transform(*kind), transform_name(*kind));
             }
             builder.close_dir();
         });
@@ -37,17 +38,4 @@ pub fn show_available_transforms(
         }
     }
     response
-}
-
-fn build_leaf(builder: &mut TreeViewBuilder<TransformNodeId>, transform_kind: TransformKind) {
-    let leaf_name = transform_kind_label(transform_kind);
-    builder.leaf(TransformNodeId::Transform(transform_kind), leaf_name);
-}
-
-pub(super) const fn transform_kind_label(transform_kind: TransformKind) -> &'static str {
-    match transform_kind {
-        TransformKind::Negative => "Негатив",
-        TransformKind::GammaCorrection => "Гамма-коррекция",
-        TransformKind::LogTransform => "Логарифм. преобраз.",
-    }
 }
