@@ -3,7 +3,7 @@ use intensity::gamma_correction::GammaCorrectionParams;
 use log::error;
 use uuid::Uuid;
 
-use crate::widgets::transforms_panel::TransformPanelCache;
+use crate::{pipeline::Transform, widgets::transforms_panel::TransformPanelCache};
 
 const PLOT_WIDTH: f32 = 200.;
 const PLOT_HEIGHT: f32 = 200.;
@@ -94,7 +94,9 @@ pub fn show_gamma_controls(
             .show(ui, |plot_ui| {
                 plot_ui.line(Line::new(
                     "График",
-                    PlotPoints::Borrowed(cache.gamma_points(step_id, gamma_data)),
+                    PlotPoints::Borrowed(
+                        cache.curve_points(step_id, Transform::GammaCorrection(gamma_data.clone())),
+                    ),
                 ));
             });
     });

@@ -3,7 +3,7 @@ use intensity::log_transform::LogTransformParams;
 use log::error;
 use uuid::Uuid;
 
-use crate::widgets::transforms_panel::TransformPanelCache;
+use crate::{pipeline::Transform, widgets::transforms_panel::TransformPanelCache};
 
 const PLOT_WIDTH: f32 = 200.;
 const PLOT_HEIGHT: f32 = 200.;
@@ -112,7 +112,10 @@ pub fn show_log_transform_controls(
             .show(ui, |plot_ui| {
                 plot_ui.line(Line::new(
                     "График",
-                    PlotPoints::Borrowed(cache.log_points(step_id, log_transform_data)),
+                    PlotPoints::Borrowed(cache.curve_points(
+                        step_id,
+                        Transform::LogTransform(log_transform_data.clone()),
+                    )),
                 ));
             });
     });

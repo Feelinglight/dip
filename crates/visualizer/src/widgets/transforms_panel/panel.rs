@@ -107,7 +107,7 @@ impl Widget for TransformsPanel<'_> {
 
 impl TransformsPanel<'_> {
     fn show_applied_transforms(&mut self, ui: &mut egui::Ui) {
-        self.cache.retain_pipeline_steps(self.pipeline);
+        self.cache.drop_stale(self.pipeline);
 
         for (idx, step) in self.pipeline.steps_mut_for_params().iter_mut().enumerate() {
             let step_id = step.id();

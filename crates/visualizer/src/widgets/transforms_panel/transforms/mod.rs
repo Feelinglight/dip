@@ -11,14 +11,6 @@ use intensity::{
 };
 use uuid::Uuid;
 
-pub fn transform_single(value: f64, transform: Transform) -> f64 {
-    match transform {
-        Transform::Negative => negative_single(value),
-        Transform::GammaCorrection(params) => gamma_correct_single(value, &params),
-        Transform::LogTransform(params) => log_transform_single(value, &params),
-    }
-}
-
 pub const fn transform_name(transform_kind: TransformKind) -> &'static str {
     match transform_kind {
         TransformKind::Negative => "Негатив",
@@ -50,5 +42,13 @@ pub fn show_transform_controls(
                 changed,
             );
         }
+    }
+}
+
+pub fn transform_single(value: f64, transform: &Transform) -> f64 {
+    match transform {
+        Transform::Negative => negative_single(value),
+        Transform::GammaCorrection(params) => gamma_correct_single(value, params),
+        Transform::LogTransform(params) => log_transform_single(value, params),
     }
 }

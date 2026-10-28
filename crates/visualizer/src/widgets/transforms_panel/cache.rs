@@ -1,114 +1,60 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, hash_map::Entry};
 
 use egui_plot::PlotPoint;
-use intensity::{
-    gamma_correction::{GammaCorrectionParams, gamma_correct_single},
-    log_transform::{LogTransformParams, log_transform_single},
-};
 use uuid::Uuid;
 
-use crate::pipeline::{Pipeline, PipelineStep};
+use crate::{
+    pipeline::{Pipeline, PipelineStep, Transform},
+    widgets::transforms_panel::transforms::transform_single,
+};
+
+const CURVE_POINTS_COUNT: usize = 100;
+
+struct Curve {
+    transform: Transform,
+    points: Vec<PlotPoint>,
+}
 
 #[derive(Default)]
 pub struct TransformPanelCache {
-    curves: HashMap<Uuid, CurveCache>,
-}
-
-pub enum CurveCache {
-    Gamma {
-        params_snapshot: GammaCorrectionParams,
-        points: Vec<PlotPoint>,
-    },
-    Log {
-        params_snapshot: LogTransformParams,
-        points: Vec<PlotPoint>,
-    },
+    curves: HashMap<Uuid, Curve>,
 }
 
 impl TransformPanelCache {
-    pub fn gamma_points(&mut self, step_id: Uuid, params: &GammaCorrectionParams) -> &[PlotPoint] {
-        let cache = self
-            .curves
-            .entry(step_id)
-            .or_insert_with(|| CurveCache::gamma(params));
-        if cache.gamma_params_changed(params) {
-            *cache = CurveCache::gamma(params);
+    pub fn curve_points(&mut self, step_id: Uuid, transform: Transform) -> &[PlotPoint] {
+        &match self.curves.entry(step_id) {
+            Entry::Occupied(mut entry) => {
+                if entry.get().transform != transform {
+                    entry.insert(Curve {
+                        points: calculate_transform_points(&transform),
+                        transform,
+                    });
+                }
+                entry.into_mut()
+            }
+            Entry::Vacant(entry) => entry.insert(Curve {
+                points: calculate_transform_points(&transform),
+                transform,
+            }),
         }
-        cache.points()
+        .points
+        .as_slice()
     }
 
-    pub fn log_points(&mut self, step_id: Uuid, params: &LogTransformParams) -> &[PlotPoint] {
-        let cache = self
-            .curves
-            .entry(step_id)
-            .or_insert_with(|| CurveCache::log(params));
-        if cache.log_params_changed(params) {
-            *cache = CurveCache::log(params);
-        }
-        cache.points()
-    }
-
-    pub fn retain_pipeline_steps(&mut self, pipeline: &Pipeline) {
+    pub fn drop_stale(&mut self, pipeline: &Pipeline) {
         let live_ids: HashSet<_> = pipeline.steps().iter().map(PipelineStep::id).collect();
         self.curves.retain(|id, _| live_ids.contains(id));
     }
 }
 
-impl CurveCache {
-    const GAMMA_POINTS_COUNT: usize = 100;
-    const LOG_POINTS_COUNT: usize = 100;
-
-    fn gamma(params: &GammaCorrectionParams) -> Self {
-        let points = calculate_points(Self::GAMMA_POINTS_COUNT, |x| {
-            gamma_correct_single(x, params)
-        });
-        Self::Gamma {
-            params_snapshot: params.clone(),
-            points,
-        }
-    }
-
-    fn log(params: &LogTransformParams) -> Self {
-        let points = calculate_points(Self::LOG_POINTS_COUNT, |x| log_transform_single(x, params));
-        Self::Log {
-            params_snapshot: params.clone(),
-            points,
-        }
-    }
-
-    fn gamma_params_changed(&self, params: &GammaCorrectionParams) -> bool {
-        !matches!(
-            self,
-            Self::Gamma {
-                params_snapshot,
-                ..
-            } if params_snapshot == params
-        )
-    }
-
-    fn log_params_changed(&self, params: &LogTransformParams) -> bool {
-        !matches!(
-            self,
-            Self::Log {
-                params_snapshot,
-                ..
-            } if params_snapshot == params
-        )
-    }
-
-    fn points(&self) -> &[PlotPoint] {
-        match self {
-            Self::Gamma { points, .. } | Self::Log { points, .. } => points,
-        }
-    }
-}
+// #[allow(clippy::cast_precision_loss)]
 
 #[allow(clippy::cast_precision_loss)]
-fn calculate_points(count: usize, y: impl Fn(f64) -> f64) -> Vec<PlotPoint> {
-    (0..count)
+fn calculate_transform_points(transform: &Transform) -> Vec<PlotPoint> {
+    (0..CURVE_POINTS_COUNT)
         .map(|x| {
-            let x_norm = x as f64 / count as f64;
-            PlotPoint::new(x_norm, y(x_norm))
+            let x_norm = x as f64 / CURVE_POINTS_COUNT as f64;
+            PlotPoint::new(x_norm, transform_single(x_norm, transform))
         })
         .collect()
 }
